@@ -1,11 +1,12 @@
 #/bin/bash
 
-   sudo apt-get update
-   sudo apt-get install vim
-   sudo apt-get install git
-   sudo apt-get install mc
+#   sudo apt-get update
+#   sudo apt-get install vim
+#   sudo apt-get install git
+#   sudo apt-get install mc
 #   sudo apt-get install font-manager
 
+   sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.profile
    echo "    . \"/home/ilvin.git/.profile\"" >> ~/.profile
 
    rm -f ~/.tmux.conf
