@@ -4,6 +4,7 @@
    sudo apt-get install vim
    sudo apt-get install git
    sudo apt-get install mc
+#   sudo apt-get install font-manager
 
    echo "    . \"/home/ilvin.git/.profile\"" >> ~/.profile
 
@@ -15,3 +16,10 @@
 
    rm -f ~/.fonts
    ln -s /home/ilvin.git/.fonts ~/.fonts
+
+   rm -f ~/.vimrc
+   ln -s /home/ilvin.git/.vimrc ~/.vimrc
+
+   rm -f ~/.gvimrc
+   ln -s /home/ilvin.git/.gvimrc ~/.gvimrc
+
