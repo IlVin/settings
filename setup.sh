@@ -13,3 +13,5 @@
    rm -f ~/.selected_editor
    ln -s /home/ilvin.git/.selected_editor ~/.selected_editor
 
+   rm -f ~/.fonts
+   ln -s /home/ilvin.git/.fonts ~/.fonts
