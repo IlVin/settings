@@ -27,3 +27,8 @@
    rm -f ~/.gvimrc
    ln -s /home/ilvin.git/.gvimrc ~/.gvimrc
 
+   rm -rf /home/ilvin.git/.vim/bundle/vim_lib
+   mkdir /home/ilvin.git/.vim/bundle/
+   mkdir /home/ilvin.git/.vim/bundle/vim_lib
+   git clone https://github.com/Bashka/vim_lib.git /home/ilvin.git/.vim/bundle/vim_lib
+
