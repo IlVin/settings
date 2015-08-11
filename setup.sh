@@ -17,6 +17,9 @@
    rm -f ~/.fonts
    ln -s /home/ilvin.git/.fonts ~/.fonts
 
+   rm -f ~/.vim
+   ln -s /home/ilvin.git/.vim ~/.vim
+
    rm -f ~/.vimrc
    ln -s /home/ilvin.git/.vimrc ~/.vimrc
 
