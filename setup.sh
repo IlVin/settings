@@ -9,6 +9,9 @@
    sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.profile
    echo "    . \"/home/ilvin.git/.profile\"" >> ~/.profile
 
+   sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.bashrc
+   echo "    . \"/home/ilvin.git/.profile\"" >> ~/.bashrc
+
    [ -f ~/.tmux.conf ] && rm -f ~/.tmux.conf
    ln -s /home/ilvin.git/.tmux.conf ~/.tmux.conf
 
