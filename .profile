@@ -1,3 +1,9 @@
+case "$TERM" in
+    'xterm') TERM=xterm-256color;;
+    'screen') TERM=screen-256color;;
+    'Eterm') TERM=Eterm-256color;;
+esac
+
 if [[ $SSH_AUTH_SOCK && `readlink ~/.ssh/ssh_auth_sock` != $SSH_AUTH_SOCK ]]; then
     rm -f ~/.ssh/ssh_auth_sock
     ln -sf $SSH_AUTH_SOCK ~/.ssh/ssh_auth_sock
