@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 #   sudo apt-get update
 #   sudo apt-get install vim
@@ -9,26 +9,31 @@
    sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.profile
    echo "    . \"/home/ilvin.git/.profile\"" >> ~/.profile
 
-   rm -f ~/.tmux.conf
+   [ -f ~/.tmux.conf ] && rm -f ~/.tmux.conf
    ln -s /home/ilvin.git/.tmux.conf ~/.tmux.conf
 
-   rm -f ~/.selected_editor
+   [ -f ~/.selected_editor ] && rm -f ~/.selected_editor
    ln -s /home/ilvin.git/.selected_editor ~/.selected_editor
 
-   rm -f ~/.fonts
+   [ -d ~/.fonts ] && rm -f ~/.fonts
    ln -s /home/ilvin.git/.fonts ~/.fonts
 
-   rm -f ~/.vim
+   [ -d ~/.vim ] && rm -f ~/.vim
    ln -s /home/ilvin.git/.vim ~/.vim
 
-   rm -f ~/.vimrc
-   ln -s /home/ilvin.git/.vimrc ~/.vimrc
-
-   rm -f ~/.gvimrc
+   [ -f ~/.gvimrc ] && rm -f ~/.gvimrc
    ln -s /home/ilvin.git/.gvimrc ~/.gvimrc
 
-   rm -rf /home/ilvin.git/.vim/bundle/vim_lib
-   mkdir /home/ilvin.git/.vim/bundle/
-   mkdir /home/ilvin.git/.vim/bundle/vim_lib
-   git clone https://github.com/Bashka/vim_lib.git /home/ilvin.git/.vim/bundle/vim_lib
+   [ -f ~/.vimrc ] && rm -f ~/.vimrc
+   cat /home/ilvin.git/.vimrc1 > ~/.vimrc
+
+   [ -d /home/ilvin.git/.vim/bundle/ ] || mkdir /home/ilvin.git/.vim/bundle/
+   [ -d /home/ilvin.git/.vim/bundle/vim_lib ] && rm -rf /home/ilvin.git/.vim/bundle/vim_lib
+#   mkdir /home/ilvin.git/.vim/bundle/vim_lib
+#   git clone https://github.com/Bashka/vim_lib.git /home/ilvin.git/.vim/bundle/vim_lib
+#   cat /home/ilvin.git/.vimrc2 >> ~/.vimrc
+
+   [ -d /home/ilvin.git/.vim/bundle/vim_lib ] && rm -rf /home/ilvin.git/.vim/bundle/vim_plugmanager
+#   mkdir /home/ilvin.git/.vim/bundle/vim_plugmanager
+#   git clone https://github.com/Bashka/vim_plugmanager.git /home/ilvin.git/.vim/bundle/vim_plugmanager
 

@@ -1,7 +1,3 @@
-
-syntax on
-colorscheme DevC++
-
 filetype off 
 set rtp=~/.vim/bundle/vim_lib
 call vim_lib#sys#Autoload#init('~/.vim', 'bundle') " Адрес до вашего ~/.vim/bundle
