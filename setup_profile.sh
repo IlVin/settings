@@ -1,11 +1,5 @@
 #!/bin/bash
 
-#   sudo apt-get update
-#   sudo apt-get install vim
-#   sudo apt-get install git
-#   sudo apt-get install mc
-#   sudo apt-get install font-manager
-
    sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.profile
    echo "    . \"/home/ilvin.git/.profile\"" >> ~/.profile
 
@@ -39,4 +33,7 @@
    [ -d /home/ilvin.git/.vim/bundle/vim_lib ] && rm -rf /home/ilvin.git/.vim/bundle/vim_plugmanager
 #   mkdir /home/ilvin.git/.vim/bundle/vim_plugmanager
 #   git clone https://github.com/Bashka/vim_plugmanager.git /home/ilvin.git/.vim/bundle/vim_plugmanager
+
+   git config --global user.email "ilvin@mail.ru"
+   git config --global user.name "Ilia Vinokurov"
 
