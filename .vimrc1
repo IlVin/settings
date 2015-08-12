@@ -1,10 +1,10 @@
 "НАСТРОЙКИ ВНЕШНЕГО ВИДА И БАЗОВЫЕ НАСТРОЙКИ РЕДАКТОРА
 set nocompatible " отключить режим совместимости с классическим Vi
-set scrolloff=3 " сколько строк внизу и вверху экрана показывать при скроллинге
+set scrolloff=2 " сколько строк внизу и вверху экрана показывать при скроллинге
 " set background=light " установить цвет фона
 " colorscheme desert
 set background=light
-colorscheme peaksea 
+colorscheme peaksea
 set wrap " (no)wrap - динамический (не)перенос длинных строк
 set linebreak " переносить целые слова
 set hidden " не выгружать буфер когда переключаешься на другой
