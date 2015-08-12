@@ -1,7 +1,7 @@
 #!/bin/bash
 
-   [ -d /home/ilvin.git ] && rm -rf /home/ilvin.git
-   [ -d ~/ilvin.git ] || mkdir ~/ilvin.git && git clone https://github.com/IlVin/settings.git/ ~/ilvin.git/
+   [ -d /home/ilvin.git ] && sudo rm -rf /home/ilvin.git
+   [ -d ~/ilvin.git ] || (mkdir ~/ilvin.git && git clone https://github.com/IlVin/settings.git/ ~/ilvin.git/)
 
    sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.profile
    sed -i 's/^.*~\/ilvin\.git\/\.profile.*$//' ~/.profile
@@ -11,20 +11,15 @@
    sed -i 's/^.*~\/ilvin\.git\/\.profile.*$//' ~/.bashrc
    echo "    . \"~/ilvin.git/.profile\"" >> ~/.bashrc
 
-   [ -f ~/.tmux.conf ] && rm -f ~/.tmux.conf
-   ln -s ~/ilvin.git/.tmux.conf ~/.tmux.conf
+   ln -sf ~/ilvin.git/.tmux.conf ~/.tmux.conf
+   ln -sf ~/ilvin.git/.selected_editor ~/.selected_editor
+   ln -sf ~/ilvin.git/.gvimrc ~/.gvimrc
 
-   [ -f ~/.selected_editor ] && rm -f ~/.selected_editor
-   ln -s ~/ilvin.git/.selected_editor ~/.selected_editor
+   [ -d ~/.fonts ] && rm -rf ~/.fonts
+   ln -sf ~/ilvin.git/.fonts ~/.fonts
 
-   [ -d ~/.fonts ] && rm -f ~/.fonts
-   ln -s ~/ilvin.git/.fonts ~/.fonts
-
-   [ -d ~/.vim ] && rm -f ~/.vim
-   ln -s ~/ilvin.git/.vim ~/.vim
-
-   [ -f ~/.gvimrc ] && rm -f ~/.gvimrc
-   ln -s ~/ilvin.git/.gvimrc ~/.gvimrc
+   [ -d ~/.vim ] && rm -rf ~/.vim
+   ln -sf ~/ilvin.git/.vim ~/.vim
 
    [ -f ~/.vimrc ] && rm -f ~/.vimrc
    cat ~/ilvin.git/.vimrc1 > ~/.vimrc
