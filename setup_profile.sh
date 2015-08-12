@@ -1,7 +1,6 @@
 #!/bin/bash
 
-   [ -d /home/ilvin.git ] && sudo rm -rf /home/ilvin.git
-   [ -d ~/ilvin.git ] || (mkdir ~/ilvin.git && git clone https://github.com/IlVin/settings.git/ ~/ilvin.git/)
+   [ -d ~/ilvin.git ] || (mkdir ~/ilvin.git && cd ~/ilvin.git && git clone https://github.com/IlVin/settings.git/ ~/ilvin.git/)
 
    sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.profile
    sed -i 's/^.*~\/ilvin\.git\/\.profile.*$//' ~/.profile
@@ -37,3 +36,5 @@
    git config --global user.email "ilvin@mail.ru"
    git config --global user.name "Ilia Vinokurov"
 
+
+   [ -d /home/ilvin.git ] && sudo rm -rf /home/ilvin.git
