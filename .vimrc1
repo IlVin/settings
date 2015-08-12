@@ -1,4 +1,11 @@
 "НАСТРОЙКИ ВНЕШНЕГО ВИДА И БАЗОВЫЕ НАСТРОЙКИ РЕДАКТОРА
+
+" '100 Marks will be remembered for the last 100 edited files.
+" <100 Limits the number of lines saved for each register to 100 lines; if a register contains more than 100 lines, only the first 100 lines are saved.
+" s20 Limits the maximum size of each item to 20 kilobytes; if a register contains more than 20 kilobytes, the register is not saved.
+" h Disables search highlighting when Vim starts. 
+set viminfo='10000,<10000,s2000,h
+
 set nocompatible " отключить режим совместимости с классическим Vi
 set scrolloff=2 " сколько строк внизу и вверху экрана показывать при скроллинге
 " set background=light " установить цвет фона
@@ -7,6 +14,7 @@ set background=light
 colorscheme peaksea
 set wrap " (no)wrap - динамический (не)перенос длинных строк
 set linebreak " переносить целые слова
+set nolist " list disables linebreak
 set hidden " не выгружать буфер когда переключаешься на другой
 " set mouse=a " включает поддержку мыши при работе в терминале (без GUI)
 set mousehide " скрывать мышь в режиме ввода текста
@@ -30,7 +38,7 @@ set laststatus=2 " всегда показывать строку состоян
 " set noruler "Отключить линейку
 "" Подсвечивать табы и пробелы в конце строки
 set list " включить подсветку
-set listchars=tab:>-,trail:- " установить символы, которыми будет осуществляться подсветка
+set listchars=tab:>→,trail:˽" установить символы, которыми будет осуществляться подсветка
 "Проблема красного на красном при spellchecking-е решается такой строкой в .vimrc
 highlight SpellBad ctermfg=Black ctermbg=Red
 " au BufWinLeave *.* silent mkview " при закрытии файла сохранить 'вид'
