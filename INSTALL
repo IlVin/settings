@@ -1,0 +1,1 @@
+mkdir ~/ilvin.git && cd ~/ilvin.git && git clone https://github.com/IlVin/settings.git/ ~/ilvin.git/
