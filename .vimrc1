@@ -10,8 +10,8 @@ set nocompatible " отключить режим совместимости с �
 set scrolloff=2 " сколько строк внизу и вверху экрана показывать при скроллинге
 " set background=light " установить цвет фона
 " colorscheme desert
-set background=light
-colorscheme peaksea
+" set background=light
+colorscheme woju
 set wrap " (no)wrap - динамический (не)перенос длинных строк
 set linebreak " переносить целые слова
 set nolist " list disables linebreak
