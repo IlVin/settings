@@ -6,13 +6,15 @@
 " h Disables search highlighting when Vim starts. 
 set viminfo='10000,<10000,s2000,h
 
+set number " Показывать нумерацию строк
+
 set nocompatible " отключить режим совместимости с классическим Vi
 set scrolloff=2 " сколько строк внизу и вверху экрана показывать при скроллинге
 " set background=light " установить цвет фона
 " colorscheme desert
 " set background=light
 colorscheme woju
-set wrap " (no)wrap - динамический (не)перенос длинных строк
+set nowrap " (no)wrap - динамический (не)перенос длинных строк
 set linebreak " переносить целые слова
 set nolist " list disables linebreak
 set hidden " не выгружать буфер когда переключаешься на другой
@@ -31,10 +33,10 @@ autocmd! bufwritepost $MYVIMRC source $MYVIMRC
 " encoding - кодировка терминала; TYPE - тип файла, затем коды символа под курсором;
 " позиция курсора (строка, символ в строке); процент прочитанного в файле;
 " кол-во строк в файле;
-set statusline=%F%m%r%h%w\ [FF,FE,TE=%{&fileformat},%{&fileencoding},%{&encoding}\]\ [TYPE=%Y]\ [ASCII=\%03.3b]\ [HEX=\%02.2B]\ [POS=%04l,%04v][%p%%]\ [LEN=%L]
+" set statusline=%F%m%r%h%w\ [FF,FE,TE=%{&fileformat},%{&fileencoding},%{&encoding}\]\ [TYPE=%Y]\ [ASCII=\%03.3b]\ [HEX=\%02.2B]\ [POS=%04l,%04v][%p%%]\ [LEN=%L]
 "Изменяет шрифт строки статуса (делает его не жирным)
-hi StatusLine gui=reverse cterm=reverse
-set laststatus=2 " всегда показывать строку состояния
+" hi StatusLine gui=reverse cterm=reverse
+" set laststatus=2 " всегда показывать строку состояния
 " set noruler "Отключить линейку
 "" Подсвечивать табы и пробелы в конце строки
 set list " включить подсветку
@@ -60,7 +62,7 @@ set virtualedit=all " позволяет курсору выходить за п
 " " При вставке фрагмента сохраняет отступ
 " set pastetoggle=
 "подсвечивает все слова, которые совпадают со словом под курсором.
-autocmd CursorMoved * silent! exe printf("match Search /\\<%s\\>/", expand('<cword>'))
+" autocmd CursorMoved * silent! exe printf("match Search /\\<%s\\>/", expand('<cword>'))
 
 " "НАСТРОЙКИ ПОИСКА ТЕКСТА В ОТКРЫТЫХ ФАЙЛАХ
 " set ignorecase " ics - поиск без учёта регистра символов
