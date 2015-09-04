@@ -1,37 +1,38 @@
 #!/bin/bash
 
-   [ -d ~/ilvin.git ] || (mkdir ~/ilvin.git && cd ~/ilvin.git && git clone https://github.com/IlVin/settings.git/ ~/ilvin.git/)
+   cd ~
+   HOMEDIR=`pwd`
 
-   sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.profile
-   sed -i 's/^.*~\/ilvin\.git\/\.profile.*$//' ~/.profile
-   echo "    . \"~/ilvin.git/.profile\"" >> ~/.profile
+   [ -d $HOMEDIR/ilvin.git ] || (mkdir $HOMEDIR/ilvin.git && cd $HOMEDIR/ilvin.git && git clone https://github.com/IlVin/settings.git/ $HOMEDIR/ilvin.git/)
 
-   sed -i 's/^.*\/home\/ilvin\.git\/\.profile.*$//' ~/.bashrc
-   sed -i 's/^.*~\/ilvin\.git\/\.profile.*$//' ~/.bashrc
-   echo "    . \"~/ilvin.git/.profile\"" >> ~/.bashrc
+   sed -i 's/^.*\/ilvin\.git\/\.profile.*$//g' $HOMEDIR/.profile
+   echo "    . \"$HOMEDIR/ilvin.git/.profile\"" >> $HOMEDIR/.profile
 
-   ln -sf ~/ilvin.git/.tmux.conf ~/.tmux.conf
-   ln -sf ~/ilvin.git/.selected_editor ~/.selected_editor
-   ln -sf ~/ilvin.git/.gvimrc ~/.gvimrc
+   sed -i 's/^.*\/ilvin\.git\/\.profile.*$//g' $HOMEDIR/.bashrc
+   echo "    . \"$HOMEDIR/ilvin.git/.profile\"" >> $HOMEDIR/.bashrc
 
-   [ -d ~/.fonts ] && rm -rf ~/.fonts
-   ln -sf ~/ilvin.git/.fonts ~/.fonts
+   ln -sf $HOMEDIR/ilvin.git/.tmux.conf $HOMEDIR/.tmux.conf
+   ln -sf $HOMEDIR/ilvin.git/.selected_editor $HOMEDIR/.selected_editor
+   ln -sf $HOMEDIR/ilvin.git/.gvimrc $HOMEDIR/.gvimrc
 
-   [ -d ~/.vim ] && rm -rf ~/.vim
-   ln -sf ~/ilvin.git/.vim ~/.vim
+   [ -d $HOMEDIR/.fonts ] && rm -rf $HOMEDIR/.fonts
+   ln -sf $HOMEDIR/ilvin.git/.fonts $HOMEDIR/.fonts
 
-   [ -f ~/.vimrc ] && rm -f ~/.vimrc
-   cat ~/ilvin.git/.vimrc1 > ~/.vimrc
+   [ -d $HOMEDIR/.vim ] && rm -rf $HOMEDIR/.vim
+   ln -sf $HOMEDIR/ilvin.git/.vim $HOMEDIR/.vim
 
-   [ -d ~/ilvin.git/.vim/bundle/ ] || mkdir ~/ilvin.git/.vim/bundle/
-   [ -d ~/ilvin.git/.vim/bundle/vim_lib ] && rm -rf ~/ilvin.git/.vim/bundle/vim_lib
-#   mkdir ~/ilvin.git/.vim/bundle/vim_lib
-#   git clone https://github.com/Bashka/vim_lib.git ~/ilvin.git/.vim/bundle/vim_lib
-#   cat ~/ilvin.git/.vimrc2 >> ~/.vimrc
+   [ -f $HOMEDIR/.vimrc ] && rm -f $HOMEDIR/.vimrc
+   cat $HOMEDIR/ilvin.git/.vimrc1 > $HOMEDIR/.vimrc
 
-   [ -d ~/ilvin.git/.vim/bundle/vim_lib ] && rm -rf ~/ilvin.git/.vim/bundle/vim_plugmanager
-#   mkdir ~/ilvin.git/.vim/bundle/vim_plugmanager
-#   git clone https://github.com/Bashka/vim_plugmanager.git ~/ilvin.git/.vim/bundle/vim_plugmanager
+   [ -d $HOMEDIR/ilvin.git/.vim/bundle/ ] || mkdir $HOMEDIR/ilvin.git/.vim/bundle/
+   [ -d $HOMEDIR/ilvin.git/.vim/bundle/vim_lib ] && rm -rf $HOMEDIR/ilvin.git/.vim/bundle/vim_lib
+#   mkdir $HOMEDIR/ilvin.git/.vim/bundle/vim_lib
+#   git clone https://github.com/Bashka/vim_lib.git $HOMEDIR/ilvin.git/.vim/bundle/vim_lib
+#   cat $HOMEDIR/ilvin.git/.vimrc2 >> $HOMEDIR/.vimrc
+
+   [ -d $HOMEDIR/ilvin.git/.vim/bundle/vim_lib ] && rm -rf $HOMEDIR/ilvin.git/.vim/bundle/vim_plugmanager
+#   mkdir $HOMEDIR/ilvin.git/.vim/bundle/vim_plugmanager
+#   git clone https://github.com/Bashka/vim_plugmanager.git $HOMEDIR/ilvin.git/.vim/bundle/vim_plugmanager
 
    git config --global user.email "ilvin@mail.ru"
    git config --global user.name "Ilia Vinokurov"
