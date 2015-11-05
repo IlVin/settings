@@ -37,5 +37,8 @@
    git config --global user.email "ilvin@mail.ru"
    git config --global user.name "Ilia Vinokurov"
 
+   # Убрать алерт "Could not apply the stored configuration for the monitor"
+   [ -f $HOMEDIR/.config/monitors.xml ] && mv $HOMEDIR/.config/monitors.xml $HOMEDIR/.config/monitors.xml.off
+
 
    [ -d /home/ilvin.git ] && sudo rm -rf /home/ilvin.git
