@@ -11,6 +11,10 @@
    sed -i 's/^.*\/ilvin\.git\/\.profile.*$//g' $HOMEDIR/.bashrc
    echo "    . \"$HOMEDIR/ilvin.git/.profile\"" >> $HOMEDIR/.bashrc
 
+   [ -f $HOMEDIR/.ssh/config ] && rm -f $HOMEDIR/.ssh/config
+   cp $HOMEDIR/ilvin.git/.ssh_config $HOMEDIR/.ssh/config
+   chmod a+r,go-w $HOMEDIR/.ssh/config
+
    ln -sf $HOMEDIR/ilvin.git/.tmux.conf $HOMEDIR/.tmux.conf
    ln -sf $HOMEDIR/ilvin.git/.selected_editor $HOMEDIR/.selected_editor
    ln -sf $HOMEDIR/ilvin.git/.gvimrc $HOMEDIR/.gvimrc
