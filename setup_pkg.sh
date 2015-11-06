@@ -5,3 +5,5 @@
    sudo apt-get install font-manager
    sudo apt-get install git-svn
 
+   sudo apt-get install clang
+   sudo update-alternatives --config c++
