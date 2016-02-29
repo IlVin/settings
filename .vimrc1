@@ -12,7 +12,7 @@ set wildmenu
 set nocompatible " отключить режим совместимости с классическим Vi
 set scrolloff=2 " сколько строк внизу и вверху экрана показывать при скроллинге
 " set background=light " установить цвет фона
-colorscheme delec
+colorscheme delek
 set background=dark
 " colorscheme woju
 set nowrap " (no)wrap - динамический (не)перенос длинных строк
