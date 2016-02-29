@@ -1,4 +1,4 @@
 
 syntax on
-colorscheme DevC++
+colorscheme delec
 
