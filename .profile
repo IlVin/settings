@@ -19,3 +19,5 @@ export MR_USER=tmp
 #export CXX=/usr/bin/clang++
 #export CC=/usr/bin/clang
 
+# Alias for ssh-agent hosts
+#alias ssh='eval $(/usr/bin/keychain --eval --agents ssh -Q --quiet ~/.ssh/id_ecdsa) && ssh'
