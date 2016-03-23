@@ -16,6 +16,6 @@ export MR_NET_TABLE=ipv6
 export DEF_MR_SERVER=sakura.search.yandex.net:8013
 export MR_USER=tmp
 
-export CXX=/usr/bin/clang++
-export CC=/usr/bin/clang
+#export CXX=/usr/bin/clang++
+#export CC=/usr/bin/clang
 
