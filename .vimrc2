@@ -6,4 +6,5 @@ Plugin 'vim_lib'
 " Другие плагины
 
 filetype indent plugin on
- 
+
+NeoBundle "https://github.com/Lokaltog/vim-easymotion"

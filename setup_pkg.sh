@@ -19,3 +19,5 @@
     sudo update-locale LANG=ru_RU.UTF-8 LANGUAGE=ru_RU:ru:en_US:en
     sudo localedef ru_RU.UTF-8 -i ru_RU -f UTF-8
 
+    # install NeoBundle
+    curl https://raw.githubusercontent.com/Shougo/neobundle.vim/master/bin/install.sh | sh
