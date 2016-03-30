@@ -28,15 +28,10 @@
    [ -f $HOMEDIR/.vimrc ] && rm -f $HOMEDIR/.vimrc
    cat $HOMEDIR/ilvin.git/.vimrc1 > $HOMEDIR/.vimrc
 
-   [ -d $HOMEDIR/ilvin.git/.vim/bundle/ ] || mkdir $HOMEDIR/ilvin.git/.vim/bundle/
-   [ -d $HOMEDIR/ilvin.git/.vim/bundle/vim_lib ] && rm -rf $HOMEDIR/ilvin.git/.vim/bundle/vim_lib
-#   mkdir $HOMEDIR/ilvin.git/.vim/bundle/vim_lib
-#   git clone https://github.com/Bashka/vim_lib.git $HOMEDIR/ilvin.git/.vim/bundle/vim_lib
-#   cat $HOMEDIR/ilvin.git/.vimrc2 >> $HOMEDIR/.vimrc
-
-   [ -d $HOMEDIR/ilvin.git/.vim/bundle/vim_lib ] && rm -rf $HOMEDIR/ilvin.git/.vim/bundle/vim_plugmanager
-#   mkdir $HOMEDIR/ilvin.git/.vim/bundle/vim_plugmanager
-#   git clone https://github.com/Bashka/vim_plugmanager.git $HOMEDIR/ilvin.git/.vim/bundle/vim_plugmanager
+   [ -d $HOMEDIR/ilvin.git/.vim/bundle/ ] && rm -rf $HOMEDIR/ilvin.git/.vim/bundle
+   [ -d $HOMEDIR/ilvin.git/.vim/bundle/ ] || mkdir $HOMEDIR/ilvin.git/.vim/bundle
+   curl https://raw.githubusercontent.com/Shougo/neobundle.vim/master/bin/install.sh | sh
+   cat $HOMEDIR/ilvin.git/.vimrc2 >> $HOMEDIR/.vimrc
 
    git config --global user.email "ilvin@mail.ru"
    git config --global user.name "Ilia Vinokurov"
