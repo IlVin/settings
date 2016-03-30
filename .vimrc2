@@ -34,3 +34,9 @@ filetype plugin indent on
 " this will conveniently prompt you to install them.
 NeoBundleCheck
 
+hi EasyMotionTarget ctermbg=yellow ctermfg=blue
+
+hi EasyMotionTarget2First ctermbg=yellow ctermfg=black
+hi EasyMotionTarget2Second ctermbg=yellow ctermfg=black
+
+hi EasyMotionMoveHL ctermbg=green ctermfg=black
