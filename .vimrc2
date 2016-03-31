@@ -22,7 +22,7 @@ NeoBundleFetch 'Shougo/neobundle.vim'
 "Use the following format for each plugin:
 
 NeoBundle "https://github.com/Lokaltog/vim-easymotion"
-NeoBundle "git://repo.or.cz/vcscommand"
+NeoBundle "https://github.com/vim-scripts/vcscommand.vim.git"
 
 "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
