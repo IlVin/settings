@@ -41,3 +41,7 @@ hi EasyMotionTarget2First ctermbg=yellow ctermfg=black
 hi EasyMotionTarget2Second ctermbg=yellow ctermfg=black
 
 hi EasyMotionMoveHL ctermbg=green ctermfg=black
+
+nmap s <Plug>(easymotion-s)
+
+
