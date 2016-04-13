@@ -22,6 +22,7 @@ NeoBundleFetch 'Shougo/neobundle.vim'
 "Use the following format for each plugin:
 
 " NeoBundle "https://github.com/Lokaltog/vim-easymotion"
+" NeoBundle "https://github.com/vim-scripts/vcscommand.vim.git"
 
 "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -39,4 +40,12 @@ NeoBundleCheck
 " hi EasyMotionTarget2First ctermbg=yellow ctermfg=black
 " hi EasyMotionTarget2Second ctermbg=yellow ctermfg=black
 
+<<<<<<< HEAD
 " hi EasyMotionMoveHL ctermbg=green ctermfg=black
+=======
+hi EasyMotionMoveHL ctermbg=green ctermfg=black
+
+nmap s <Plug>(easymotion-s)
+
+
+>>>>>>> a8d88be4a1c7643e0192cd5de03deb4d3e159a16
