@@ -21,7 +21,7 @@ NeoBundleFetch 'Shougo/neobundle.vim'
 "%%%%%%%% YOUR PLUGINS HERE %%%%%%%%
 "Use the following format for each plugin:
 
-NeoBundle "https://github.com/Lokaltog/vim-easymotion"
+" NeoBundle "https://github.com/Lokaltog/vim-easymotion"
 
 "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -34,9 +34,9 @@ filetype plugin indent on
 " this will conveniently prompt you to install them.
 NeoBundleCheck
 
-hi EasyMotionTarget ctermbg=yellow ctermfg=blue
+" hi EasyMotionTarget ctermbg=yellow ctermfg=blue
 
-hi EasyMotionTarget2First ctermbg=yellow ctermfg=black
-hi EasyMotionTarget2Second ctermbg=yellow ctermfg=black
+" hi EasyMotionTarget2First ctermbg=yellow ctermfg=black
+" hi EasyMotionTarget2Second ctermbg=yellow ctermfg=black
 
-hi EasyMotionMoveHL ctermbg=green ctermfg=black
+" hi EasyMotionMoveHL ctermbg=green ctermfg=black
