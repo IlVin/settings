@@ -3,7 +3,7 @@
 " '100 Marks will be remembered for the last 100 edited files.
 " <100 Limits the number of lines saved for each register to 100 lines; if a register contains more than 100 lines, only the first 100 lines are saved.
 " s20 Limits the maximum size of each item to 20 kilobytes; if a register contains more than 20 kilobytes, the register is not saved.
-" h Disables search highlighting when Vim starts. 
+" h Disables search highlighting when Vim starts.
 set viminfo='10000,<10000,s2000,h
 
 set number " Показывать нумерацию строк
@@ -12,7 +12,7 @@ set wildmenu
 set nocompatible " отключить режим совместимости с классическим Vi
 set scrolloff=2 " сколько строк внизу и вверху экрана показывать при скроллинге
 " set background=light " установить цвет фона
-colorscheme delek
+colorscheme woju
 set background=dark
 " colorscheme woju
 set nowrap " (no)wrap - динамический (не)перенос длинных строк

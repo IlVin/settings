@@ -37,7 +37,7 @@
 
     [ -d $HOMEDIR/ilvin.git/.vim/bundle/ ] || mkdir $HOMEDIR/ilvin.git/.vim/bundle
     curl https://raw.githubusercontent.com/Shougo/neobundle.vim/master/bin/install.sh | sh
-#    cat $HOMEDIR/ilvin.git/.vimrc2 >> $HOMEDIR/.vimrc
+    cat $HOMEDIR/ilvin.git/.vimrc2 >> $HOMEDIR/.vimrc
 
     git config --global user.email "ilvin@mail.ru"
     git config --global user.name "Ilia Vinokurov"
@@ -47,6 +47,4 @@
 
     git config --global push.default simple
     git config --global receive.denyCurrentBranch ignore
-
-    [ -d /home/ilvin.git ] && sudo rm -rf /home/ilvin.git
 
