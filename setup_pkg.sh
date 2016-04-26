@@ -5,6 +5,8 @@
     sudo apt-get update
     sudo apt-get install exfat-fuse exfat-utils
 
+    sudo apt-get install pv
+    sudo apt-get install liblz4-tool
     sudo apt-get install curl
     sudo apt-get install vim-gtk
     sudo apt-get install font-manager
