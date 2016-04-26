@@ -22,6 +22,11 @@
     cp $HOMEDIR/ilvin.git/.ssh_config $HOMEDIR/.ssh/config
     chmod a+r,go-w $HOMEDIR/.ssh/config
 
+    git config --global user.email "ilvin@mail.ru"
+    git config --global user.name "Ilia Vinokurov"
+    git config --global push.default simple
+    git config --global receive.denyCurrentBranch ignore
+
     ln -sf $HOMEDIR/ilvin.git/.tmux.conf $HOMEDIR/.tmux.conf
     ln -sf $HOMEDIR/ilvin.git/.selected_editor $HOMEDIR/.selected_editor
     ln -sf $HOMEDIR/ilvin.git/.gvimrc $HOMEDIR/.gvimrc
@@ -39,12 +44,13 @@
     curl https://raw.githubusercontent.com/Shougo/neobundle.vim/master/bin/install.sh | sh
     cat $HOMEDIR/ilvin.git/.vimrc2 >> $HOMEDIR/.vimrc
 
-    git config --global user.email "ilvin@mail.ru"
-    git config --global user.name "Ilia Vinokurov"
+    [ -d $HOMEDIR/ilvin.git/papercolor-theme ] && cd $HOMEDIR/ilvin.git && rm -rf ./papercolor-theme
+    cd $HOMEDIR/ilvin.git && git clone https://github.com/NLKNguyen/papercolor-theme.git ./papercolor-theme
+    [ -f $HOMEDIR/ilvin.git/papercolor-theme/colors/PaperColor.vim ] && rm -f $HOMEDIR/.vim/colors/PaperColor.vim
+    [ -f $HOMEDIR/ilvin.git/papercolor-theme/colors/PaperColor.vim ] && cp $HOMEDIR/ilvin.git/papercolor-theme/colors/PaperColor.vim $HOMEDIR/.vim/colors
+    [ -d $HOMEDIR/ilvin.git/papercolor-theme ] && cd $HOMEDIR/ilvin.git && rm -rf ./papercolor-theme
+    cd $HOMEDIR/ilvin.git/.vim/colors/ git commit PaperColor.vim -m 'Update PaperColor.vim'
 
     # Убрать алерт "Could not apply the stored configuration for the monitor"
     [ -f $HOMEDIR/.config/monitors.xml ] && mv $HOMEDIR/.config/monitors.xml $HOMEDIR/.config/monitors.xml.off
-
-    git config --global push.default simple
-    git config --global receive.denyCurrentBranch ignore
 
