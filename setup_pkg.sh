@@ -5,6 +5,7 @@
     sudo apt-get update
     sudo apt-get install exfat-fuse exfat-utils
     sudo apt-get install pkg-config libtool automake
+    sudo apt-get install graphviz gv
     sudo apt-get install pv
     sudo apt-get install liblz4-tool
     sudo apt-get install curl
