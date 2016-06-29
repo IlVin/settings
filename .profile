@@ -12,6 +12,8 @@ if [[ $SSH_AUTH_SOCK && `readlink ~/.ssh/ssh_auth_sock` != $SSH_AUTH_SOCK ]]; th
 #    export SSH_AUTH_SOCK=~/.ssh/ssh_auth_sock
 fi
 
+export EDITOR=/usr/bin/vim
+
 export MR_NET_TABLE=ipv6
 export DEF_MR_SERVER=sakura.search.yandex.net:8013
 export MR_USER=tmp
