@@ -18,6 +18,8 @@ export MR_NET_TABLE=ipv6
 export DEF_MR_SERVER=sakura.search.yandex.net:8013
 export MR_USER=tmp
 
+alias valgrind='/home/ilvin/local/bin/valgrind'
+
 #export CXX=/usr/bin/clang++
 #export CC=/usr/bin/clang
 
