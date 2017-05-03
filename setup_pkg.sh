@@ -24,6 +24,8 @@
         keychain \
         clang \
 
+    # For umbrello
+    sudo apt-get install kinit kio kio-extras kded5
 
-        sudo update-alternatives --config c++
+    sudo update-alternatives --config c++
 
