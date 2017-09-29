@@ -10,4 +10,4 @@ make install
 
 
 # Setup KCachegrind (need desktop)
-# sudo apt-get install kcachegrind
+sudo apt-get install kcachegrind
