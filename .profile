@@ -1,4 +1,4 @@
-export TERM=xterm-256color
+# export TERM=xterm-256color
 
 case "$TERM" in
     "xterm") export TERM=xterm-256color;;
