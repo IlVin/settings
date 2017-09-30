@@ -10,18 +10,6 @@
         libtool \
         automake \
         graphviz \
-        gv \
-        pv \
-        parallel \
-        liblz4-tool \
-        curl \
-        htop \
-        sysstat \
-        vim-gtk \
-        font-manager \
-        subversion \
-        git-svn \
-        keychain \
         clang \
 
     # For umbrello

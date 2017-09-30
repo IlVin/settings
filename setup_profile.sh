@@ -5,13 +5,6 @@
 
     [ -d $HOMEDIR/ilvin.git ] || (mkdir $HOMEDIR/ilvin.git && cd $HOMEDIR/ilvin.git && git clone https://github.com/IlVin/settings.git/ $HOMEDIR/ilvin.git/)
 
-    sudo locale-gen en_US.UTF-8 ru_RU.UTF-8
-#    sudo update-locale LANG=ru_RU.UTF-8 LANGUAGE=ru_RU:ru:en_US:en
-    sudo update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en
-    sudo localedef en_US.UTF-8 -i en_US -f UTF-8
-    sudo dpkg-reconfigure locales
-#    sudo dpkg-reconfigure console-setup
-
     sed -i 's/^.*\/ilvin\.git\/\.profile.*$//g' $HOMEDIR/.profile
     echo "    . \"$HOMEDIR/ilvin.git/.profile\"" >> $HOMEDIR/.profile
 
