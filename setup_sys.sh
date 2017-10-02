@@ -2,6 +2,8 @@
 
     sudo apt-get update
     sudo apt-get install \
+        dconf-tools \
+        nmap \
         bash \
         gv \
         pv \
@@ -17,7 +19,6 @@
         git-svn \
         keychain \
         tmux \
-        xrdp \
         mc \
 
 
