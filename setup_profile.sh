@@ -42,7 +42,7 @@
     [ -f $HOMEDIR/ilvin.git/papercolor-theme/colors/PaperColor.vim ] && rm -f $HOMEDIR/.vim/colors/PaperColor.vim
     [ -f $HOMEDIR/ilvin.git/papercolor-theme/colors/PaperColor.vim ] && cp $HOMEDIR/ilvin.git/papercolor-theme/colors/PaperColor.vim $HOMEDIR/.vim/colors
     [ -d $HOMEDIR/ilvin.git/papercolor-theme ] && cd $HOMEDIR/ilvin.git && rm -rf ./papercolor-theme
-    cd $HOMEDIR/ilvin.git/.vim/colors/ git commit PaperColor.vim -m 'Update PaperColor.vim'
+    cd $HOMEDIR/ilvin.git/.vim/colors/ && git commit PaperColor.vim -m 'Update PaperColor.vim'
 
     # Убрать алерт "Could not apply the stored configuration for the monitor"
     [ -f $HOMEDIR/.config/monitors.xml ] && mv $HOMEDIR/.config/monitors.xml $HOMEDIR/.config/monitors.xml.off
