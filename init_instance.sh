@@ -3,8 +3,11 @@
 sudo apt update -y
 sudo apt upgrade -y
 
-sudo apt install -y openssh-server
 sudo apt install -y net-tools
+
+sudo apt install -y openssh-server
+[ -d ~/.ssh ] || mkdir ~/.ssh
+[ -d ~/.ssh ] && chmod 700 ~/.ssh
 
 sudo apt install -y git
 git clone https://github.com/IlVin/settings.git ~/ilvin.git/
