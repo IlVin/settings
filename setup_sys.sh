@@ -30,6 +30,7 @@ sudo apt-get install -y git-svn
 
 # Setup Xfce4
 sudo apt-get install -y xfce4
+sudo apt-get install -y xfce4-session
 sudo apt-get install -y xfce4-goodies
 sed -i 's/^.*startxfce4 [&].*$//g' $HOMEDIR/.vnc/xstartup
 #echo -e "\nstartxfce4 &\n" >> $HOMEDIR/.vnc/xstartup
@@ -39,9 +40,12 @@ sed -i 's/^.*startxfce4 [&].*$//g' $HOMEDIR/.vnc/xstartup
 sudo apt-get install -y x11vnc
 sudo service x11vnc stop
 sudo systemctl disable x11vnc.service
-sudo rm -f /etc/systemd/system/x11vnc.service
+[ -f /etc/systemd/system/x11vnc.service ] && sudo rm -f /etc/systemd/system/x11vnc.service
+[ -f $HOMEDIR/.vnc/passwd ] && rm -f $HOMEDIR/.vnc/passwd
+[ -f /etc/vnc/x11vnc.passwd ] && sudo rm -f /etc/vnc/x11vnc.passwd
+[ -d /etc/vnc/ ] || sudo mkdir /etc/vnc/
+sudo x11vnc -storepasswd /etc/vnc/x11vnc.passwd
 sudo cp $HOMEDIR/ilvin.git/x11vnc.service /etc/systemd/system/x11vnc.service
-sudo chmod a+x /etc/systemd/system/x11vnc.service
 sudo systemctl daemon-reload
 sudo systemctl enable x11vnc.service
 sudo service x11vnc start
