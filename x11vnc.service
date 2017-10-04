@@ -1,0 +1,10 @@
+[Unit]
+Description=Start x11vnc server at startup
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/x11vnc -localhost -auth guess -forever -loop -noxdamage -rfbport 5900 -shared -dontdisconnect -many -noxfixes
+
+[Install]
+WantedBy=multi-user.target
