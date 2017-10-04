@@ -11,6 +11,9 @@ sudo locale-gen en_US.UTF-8 ru_RU.UTF-8
 sudo update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en
 sudo localedef en_US.UTF-8 -i en_US -f UTF-8
 sudo dpkg-reconfigure locales
+sudo apt install -y console-data
+sudo dpkg-reconfigure console-data
+sudo dpkg-reconfigure console-setup
 
 sudo reboot now
 
