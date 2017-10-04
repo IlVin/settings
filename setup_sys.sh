@@ -4,6 +4,7 @@ cd ~
 HOMEDIR=`pwd`
 
 sudo apt-get update
+sudo apt-get upgrade -y
 
 # Setup environment
 sudo apt-get install -y nmap
