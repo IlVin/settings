@@ -3,6 +3,7 @@
 sudo apt update -y
 sudo apt upgrade -y
 
+sudo apt install -y openssh-server
 sudo apt install -y net-tools
 
 sudo apt install -y git
