@@ -10,6 +10,7 @@ sudo apt install -y openssh-server
 [ -d ~/.ssh ] && chmod 700 ~/.ssh
 
 sudo apt install -y git
+[ -d ~/ilvin.git/ ] && rm -rf ~/ilvin.git/
 git clone https://github.com/IlVin/settings.git ~/ilvin.git/
 
 # Setup console
