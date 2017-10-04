@@ -2,7 +2,10 @@
 
 sudo apt update -y
 sudo apt upgrade -y
-sudo apt install git -y
+
+sudo apt install -y net-tools
+
+sudo apt install -y git
 git clone https://github.com/IlVin/settings.git ~/ilvin.git/
 
 # Setup console
