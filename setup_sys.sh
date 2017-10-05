@@ -32,10 +32,17 @@ sudo apt-get install -y git-svn
 sudo apt-get install -y xfce4
 sudo apt-get install -y xfce4-session
 sudo apt-get install -y xfce4-goodies
-sudo apt-get install -y slim
 #sed -i 's/^.*startxfce4 [&].*$//g' $HOMEDIR/.vnc/xstartup
 #echo -e "\nstartxfce4 &\n" >> $HOMEDIR/.vnc/xstartup
 #sudo chmod a+x $HOMEDIR/.vnc/xstartup
+
+# Setup Display manager
+defdm=`head -n1 /etc/X11/default-display-manager 2>/dev/null`
+if ! [ -f "$defdm" ]; then
+    echo "Setup SLIM DM"
+    sudo apt-get install -y slim
+    sudo sh -c 'echo "/usr/bin/slim" > /etc/X11/default-display-manager'
+fi
 
 # Setup VNC
 sudo apt-get install -y x11vnc
