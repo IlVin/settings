@@ -3,7 +3,7 @@ Description=Start x11vnc server at startup
 After=multi-user.target
 
 [Service]
-ExecStart=/usr/bin/x11vnc -localhost -forever -loop -xkb -noxrecord -noxfixes -noxdamage -display :0 -auth guess -rfbauth /etc/vnc/x11vnc.passwd
+ExecStart=/usr/bin/x11vnc -localhost -display :0 -rfbauth /etc/vnc/x11vnc.passwd -auth /var/run/slim.auth
 ExecStop=/usr/bin/killall x11vnc
 
 [Install]

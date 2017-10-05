@@ -32,7 +32,8 @@ sudo apt-get install -y git-svn
 sudo apt-get install -y xfce4
 sudo apt-get install -y xfce4-session
 sudo apt-get install -y xfce4-goodies
-sed -i 's/^.*startxfce4 [&].*$//g' $HOMEDIR/.vnc/xstartup
+sudo apt-get install -y slim
+#sed -i 's/^.*startxfce4 [&].*$//g' $HOMEDIR/.vnc/xstartup
 #echo -e "\nstartxfce4 &\n" >> $HOMEDIR/.vnc/xstartup
 #sudo chmod a+x $HOMEDIR/.vnc/xstartup
 
