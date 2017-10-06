@@ -37,12 +37,11 @@ sudo apt-get install -y xfce4-goodies
 #sudo chmod a+x $HOMEDIR/.vnc/xstartup
 
 # Setup Display manager
-sudo apt-get install -y slim
 defdm=`head -n1 /etc/X11/default-display-manager 2>/dev/null`
 if ! [ -f "$defdm" ]; then
-    echo "Set SLIM as default DM"
-    sudo service slim restart
-    sudo sh -c 'echo "/usr/bin/slim" > /etc/X11/default-display-manager'
+    echo "Setup SLIM DM"
+    sudo apt-get install -y slim
+    sudo service slim start
 fi
 
 # Setup VNC
@@ -56,6 +55,8 @@ sudo x11vnc -storepasswd /etc/vnc/x11vnc.passwd
 
 dmauth=`ps wwaux | grep 'Xorg' | grep -Po '\-auth [^ ]+' | cut -d' ' -f2 | head -n1`
 if [ "$dmauth" == "/var/run/slim.auth" ]; then
+    echo "Set SLIM as default DM"
+    sudo sh -c 'echo "/usr/bin/slim" > /etc/X11/default-display-manager'
     sudo cp $HOMEDIR/ilvin.git/x11vnc.service.slim /etc/systemd/system/x11vnc.service
 else
     sudo cp $HOMEDIR/ilvin.git/x11vnc.service /etc/systemd/system/x11vnc.service
