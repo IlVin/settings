@@ -37,10 +37,10 @@ sudo apt-get install -y xfce4-goodies
 #sudo chmod a+x $HOMEDIR/.vnc/xstartup
 
 # Setup Display manager
+sudo apt-get install -y slim
 defdm=`head -n1 /etc/X11/default-display-manager 2>/dev/null`
 if ! [ -f "$defdm" ]; then
-    echo "Setup SLIM DM"
-    sudo apt-get install -y slim
+    echo "Set SLIM as default DM"
     sudo sh -c 'echo "/usr/bin/slim" > /etc/X11/default-display-manager'
 fi
 
@@ -59,5 +59,6 @@ sudo systemctl enable x11vnc.service
 sudo service x11vnc start
 
 sudo systemctl --no-pager status x11vnc.service
+sleep 5
 sudo netstat -nltp
 
