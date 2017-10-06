@@ -54,7 +54,7 @@ sudo systemctl disable x11vnc.service
 sudo x11vnc -storepasswd /etc/vnc/x11vnc.passwd
 
 dmauth=`ps wwaux | grep 'Xorg' | grep -Po '\-auth [^ ]+' | cut -d' ' -f2 | head -n1`
-if ! [ "$defdm" == "/var/run/slim.auth" ]; then
+if [ "$dmauth" == "/var/run/slim.auth" ]; then
     sudo cp $HOMEDIR/ilvin.git/x11vnc.service.slim /etc/systemd/system/x11vnc.service
 else
     sudo cp $HOMEDIR/ilvin.git/x11vnc.service /etc/systemd/system/x11vnc.service
