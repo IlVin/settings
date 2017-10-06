@@ -6,6 +6,8 @@ sudo apt update
 sudo apt install -y pkg-config
 sudo apt install -y libtool
 sudo apt install -y automake
+
+# Soft
 sudo apt install -y graphviz
 
 # C++
