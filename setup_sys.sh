@@ -58,6 +58,6 @@ sudo systemctl daemon-reload
 sudo systemctl enable x11vnc.service
 sudo service x11vnc start
 
-netstat -nltp
-systemctl --no-pager status x11vnc.service
+sudo systemctl --no-pager status x11vnc.service
+sudo netstat -nltp
 
