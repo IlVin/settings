@@ -41,6 +41,7 @@ sudo apt-get install -y slim
 defdm=`head -n1 /etc/X11/default-display-manager 2>/dev/null`
 if ! [ -f "$defdm" ]; then
     echo "Set SLIM as default DM"
+    sudo service slim restart
     sudo sh -c 'echo "/usr/bin/slim" > /etc/X11/default-display-manager'
 fi
 
@@ -59,11 +60,12 @@ if [ "$dmauth" == "/var/run/slim.auth" ]; then
 else
     sudo cp $HOMEDIR/ilvin.git/x11vnc.service /etc/systemd/system/x11vnc.service
 fi
+
 sudo systemctl daemon-reload
 sudo systemctl enable x11vnc.service
 sudo service x11vnc start
 
 sudo systemctl --no-pager status x11vnc.service
-sleep 5
+sleep 3
 sudo netstat -nltp
 
