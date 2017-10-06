@@ -49,11 +49,16 @@ sudo apt-get install -y x11vnc
 sudo service x11vnc stop
 sudo systemctl disable x11vnc.service
 [ -f /etc/systemd/system/x11vnc.service ] && sudo rm -f /etc/systemd/system/x11vnc.service
-[ -f $HOMEDIR/.vnc/passwd ] && rm -f $HOMEDIR/.vnc/passwd
 [ -f /etc/vnc/x11vnc.passwd ] && sudo rm -f /etc/vnc/x11vnc.passwd
 [ -d /etc/vnc/ ] || sudo mkdir /etc/vnc/
 sudo x11vnc -storepasswd /etc/vnc/x11vnc.passwd
-sudo cp $HOMEDIR/ilvin.git/x11vnc.service /etc/systemd/system/x11vnc.service
+
+dmauth=`ps wwaux | grep 'Xorg' | grep -Po '\-auth [^ ]+' | cut -d' ' -f2 | head -n1`
+if ! [ "$defdm" == "/var/run/slim.auth" ]; then
+    sudo cp $HOMEDIR/ilvin.git/x11vnc.service.slim /etc/systemd/system/x11vnc.service
+else
+    sudo cp $HOMEDIR/ilvin.git/x11vnc.service /etc/systemd/system/x11vnc.service
+fi
 sudo systemctl daemon-reload
 sudo systemctl enable x11vnc.service
 sudo service x11vnc start
