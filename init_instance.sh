@@ -66,7 +66,7 @@ if [ "$dmauth" == "/var/run/slim.auth" ] || [ "$dmauth" == "" ]; then
 else
     sudo cp $HOMEDIR/ilvin.git/x11vnc.service /etc/systemd/system/x11vnc.service
 fi
-
+sudo x11vnc -storepasswd 123 /etc/vnc/x11vnc.passwd
 sudo systemctl daemon-reload
 sudo systemctl enable x11vnc.service
 
@@ -79,8 +79,6 @@ sudo dpkg-reconfigure locales
 sudo apt install -y console-data
 sudo dpkg-reconfigure console-data
 sudo dpkg-reconfigure console-setup
-
-sudo x11vnc -storepasswd /etc/vnc/x11vnc.passwd
 
 sudo reboot now
 
