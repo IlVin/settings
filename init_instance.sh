@@ -14,6 +14,7 @@ sudo apt-get install -y mc
 sudo apt-get install -y curl
 sudo apt-get install -y vim
 sudo apt-get install -y vim-gtk3
+sudo apt-get install -y rsync
 
 sudo apt-get install -y dconf-tools
 sudo apt-get install -y gv
@@ -80,5 +81,6 @@ sudo apt install -y console-data
 sudo dpkg-reconfigure console-data
 sudo dpkg-reconfigure console-setup
 
+sudo apt autoremove
 sudo reboot now
 
