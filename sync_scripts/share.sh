@@ -13,7 +13,7 @@ DSTPOOL="/dev/mpool"
 DSTLVNAME="mirror_$NAME"
 DSTLVPATH="$DSTPOOL/$DSTLVNAME"
 
-SNAPPATH="/mnt/snap/mirror/$NAME"
+SNAPPATH="/mnt/snap/mirror/$NAME/"
 SNAPLVNAME="snap_mirror_$NAME"
 SNAPLVPATH="$DSTPOOL/$SNAPLVNAME"
 
@@ -36,7 +36,6 @@ echo "mod3" >> /mnt/mirror/share/home/ilvin/mod3.txt
 echo "mod4" >> /mnt/mirror/share/home/ilvin/mod4.txt
 
 CMD="date '+%Y/%m/%d %H:%M:%S [0000] START BACKUP: $SRCPATH => $DSTPATH' >> /var/log/rsync_log"
-echo $CMD
 sudo sh -c "$CMD"
 sudo nice -n 20 rsync --verbose --log-file=/var/log/rsync_log --ignore-times --human-readable --inplace --copy-links --copy-dirlinks --perms --executability --xattrs --owner --group --times --recursive --exclude=lost+found --delete --checksum $SRCPATH $DSTPATH
 
