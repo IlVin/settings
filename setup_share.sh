@@ -21,9 +21,6 @@ sudo useradd -d /dev/null -s /sbin/nologin peter
 sudo useradd -d /dev/null -s /sbin/nologin lidia
 sudo useradd -d /dev/null -s /sbin/nologin ivan
 
-[ -f /mnt/backup/share ] || sudo mkdir /mnt/backup/share
-sudo chown ilvin:ilvin -R /mnt/backup
-
 sudo apt update -y
 sudo apt install -y samba
 sudo cp /etc/samba/smb.conf{,.bak}
