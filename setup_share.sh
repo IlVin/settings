@@ -28,4 +28,6 @@ sudo rm -f /etc/samba/smb.conf
 sudo cp $HOMEDIR/ilvin.git/smb.conf /etc/samba/smb.conf
 sudo service smbd restart
 
+sudo apt install -y minidlna
+
 
