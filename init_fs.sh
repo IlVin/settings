@@ -1,60 +1,33 @@
+do_disk_to_pool () # disk, vg_name, lv_names
+{
+    local DISK="$1"
+    local VG="$2"
+    local LVS="$3"
+    local SPPOOL="sp_$VG_NAME"
 
-SDISK='/dev/sda'
-MDISK='/dev/sdb'
+    echo "DISK=$DISK; VG=$VG; SPPOOL=$SPPOOL; LVS=$LVS"
 
-SVG='sgroup'
-MVG='mgroup'
+    # Create phisical volumes
+    sudo pvcreate $DISK
+    sudo sync $DISK
 
-SPOOL='spool'
-MPOOL='mpool'
+    # Create volume groups
+    sudo vgcreate $VG $DISK
+    sudo sync $DISK
 
-SLVSHARE='sshare'
-SLVDLNA='sdlna'
-MLVSHARE='mshare'
-MLVDLNA='mdlna'
+    # Create a thin pools
+    SIZE=`sudo vgs -o vg_free_count --rows $VG | awk '{ print $2 }'`
 
-# Create phisical volumes
-sudo pvcreate $SDISK
-sudo pvcreate $MDISK
-sudo sync $SDISK
-sudo sync $MDISK
+    sudo lvcreate -L $SIZE -T $VG/$SPPOOL
+    sudo sync $VG/$SPPOOL
 
-# Create volume groups
-sudo vgcreate $SVG $SDISK
-sudo vgcreate $MVG $MDISK
-sudo sync $SDISK
-sudo sync $MDISK
+    for $LV in $LV_NAMES
+    do
+        sudo lvcreate -V $SIZE -T $VG/$SSPOOL -n $LV
+        sudo sync /dev/$VG/$LV
+    done
+}
 
-# Create a thin pools
-SSIZE=`sudo vgs -o vg_free_count --rows $SVG | awk '{ print $2 }'`
-MSIZE=`sudo vgs -o vg_free_count --rows $MVG | awk '{ print $2 }'`
-sudo lvcreate -L $SSIZE -T $SVG/$SPOOL
-sudo lvcreate -L $MSIZE -T $MVG/$MPOOL
-
-# Create logical volume
-sudo lvcreate -V $SSIZE -T $SVG/$SPOOL -n $SLVSHARE
-sudo lvcreate -V $SSIZE -T $SVG/$SPOOL -n $SLVDLNA
-
-sudo lvcreate -V $MSIZE -T $MVG/$MPOOL -n $MLVSHARE
-sudo lvcreate -V $MSIZE -T $MVG/$MPOOL -n $MLVDLNA
-
-sudo sync /dev/$SVG/$SLVSHARE
-sudo sync /dev/$SVG/$SLVDLNA
-
-sudo sync /dev/$MVG/$MLVSHARE
-sudo sync /dev/$MVG/$MLVDLNA
-
-# Create file systems
-sudo mkfs -t ext4 /dev/$SVG/$SLVSHARE
-sudo mkfs -t ext4 /dev/$SVG/$SLVDLNA
-
-sudo mkfs -t ext4 /dev/$MVG/$MLVSHARE
-sudo mkfs -t ext4 /dev/$MVG/$MLVDLNA
-
-sudo sync /dev/$SVG/$SLVSHARE
-sudo sync /dev/$SVG/$SLVDLNA
-
-sudo sync /dev/$MVG/$MLVSHARE
-sudo sync /dev/$MVG/$MLVDLNA
-
+do_disk_to_pool("/dev/sda", "share", "share dlna")
+do_disk_to_pool("/dev/sdb", "mirror", "share dlna")
 
