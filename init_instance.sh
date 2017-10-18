@@ -44,6 +44,11 @@ sudo apt-get install -y xfce4
 sudo apt-get install -y xfce4-session
 sudo apt-get install -y xfce4-goodies
 
+# Turn off energy control and screen saver
+sudo xset s off
+sudo xset dpms 0 0 0
+sudo xset -dpms
+
 # Setup Display manager
 defdm=`head -n1 /etc/X11/default-display-manager 2>/dev/null`
 if ! [ -f "$defdm" ]; then
