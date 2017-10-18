@@ -17,6 +17,7 @@ SNAPPATH="/mnt/snap/mirror/$NAME/"
 SNAPLVNAME="snap_mirror_$NAME"
 SNAPLVPATH="$DSTPOOL/$SNAPLVNAME"
 
+LOGPATH="/var/log/rsync_backup_log"
 
 if [ -e $SNAPLVPATH ]
 then
@@ -35,9 +36,9 @@ rm -f /mnt/mirror/share/home/ilvin/mod2.txt
 echo "mod3" >> /mnt/mirror/share/home/ilvin/mod3.txt
 echo "mod4" >> /mnt/mirror/share/home/ilvin/mod4.txt
 
-CMD="date '+%Y/%m/%d %H:%M:%S [0000] START BACKUP: $SRCPATH => $DSTPATH' >> /var/log/rsync_log"
+CMD="date '+%Y/%m/%d %H:%M:%S [$$] START_BACKUP $SRCPATH $DSTPATH $SNAPPATH' > $LOGPATH"
 sudo sh -c "$CMD"
-sudo nice -n 20 rsync --verbose --log-file=/var/log/rsync_log --ignore-times --human-readable --inplace --copy-links --copy-dirlinks --perms --executability --xattrs --owner --group --times --recursive --exclude=lost+found --delete --checksum $SRCPATH $DSTPATH
+sudo nice -n 20 rsync --verbose --log-file=$LOGPATH --ignore-times --human-readable --inplace --copy-links --copy-dirlinks --perms --executability --xattrs --owner --group --times --recursive --exclude=lost+found --delete --checksum $SRCPATH $DSTPATH
 
 sudo umount -f $SNAPPATH && true
 sudo lvremove -f $SNAPLVPATH
