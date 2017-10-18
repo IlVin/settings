@@ -6,6 +6,9 @@ sudo apt upgrade -y
 cd ~
 HOMEDIR=`pwd`
 
+# System
+sudo apt-get install -y lvm2
+
 # Setup environment
 sudo apt-get install -y nmap
 sudo apt-get install -y bash
