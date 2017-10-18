@@ -8,6 +8,7 @@ HOMEDIR=`pwd`
 
 # System
 sudo apt-get install -y lvm2
+sudo apt-get install -y thin-provisioning-tools
 
 # Setup environment
 sudo apt-get install -y nmap
