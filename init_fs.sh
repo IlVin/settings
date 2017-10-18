@@ -1,3 +1,8 @@
+
+sudo apt-get update -y
+sudo apt-get install -y lvm2
+sudo apt-get install -y thin-provisioning-tools
+
 do_disk_to_pool () # disk, vg_name, lv_names
 {
     local DISK="$1"
@@ -30,5 +35,5 @@ do_disk_to_pool () # disk, vg_name, lv_names
     done
 }
 
-do_disk_to_pool "/dev/sda" "data" "homes share dlna backup"
-do_disk_to_pool "/dev/sdb" "mirror" "homes share dlna backup"
+#do_disk_to_pool "/dev/sda" "data" "homes share dlna backup"
+#do_disk_to_pool "/dev/sdb" "mirror" "homes share dlna backup"
