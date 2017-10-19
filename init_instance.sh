@@ -9,6 +9,7 @@ HOMEDIR=`pwd`
 # System
 sudo apt-get install -y lvm2
 sudo apt-get install -y thin-provisioning-tools
+sudo apt-get install -y smartmontools --no-install-recommends
 
 # Setup environment
 sudo apt-get install -y nmap
@@ -48,6 +49,9 @@ sudo apt-get install -y xfce4-goodies
 sudo xset s off
 sudo xset dpms 0 0 0
 sudo xset -dpms
+
+# Gnome utility
+sudo apt-get install -y gnome-disk-utility
 
 # Setup Display manager
 defdm=`head -n1 /etc/X11/default-display-manager 2>/dev/null`
