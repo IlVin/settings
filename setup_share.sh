@@ -4,16 +4,22 @@ sudo apt update -y
 cd ~
 HOMEDIR=`pwd`
 
-sudo mkdir -p /mnt/share/share
-sudo mkdir -p /mnt/share/home
-sudo mkdir -p /mnt/share/home/ilvin
-sudo mkdir -p /mnt/share/home/maria
-sudo mkdir -p /mnt/share/home/stephan
-sudo mkdir -p /mnt/share/home/sofia
-sudo mkdir -p /mnt/share/home/peter
-sudo mkdir -p /mnt/share/home/lidia
-sudo mkdir -p /mnt/share/home/ivan
-sudo chown ilvin:ilvin -R /mnt/share
+sudo mkdir -p /mnt/data/dlna
+sudo mkdir -p /mnt/data/share
+sudo mkdir -p /mnt/data/homes
+sudo mkdir -p /mnt/data/homes/ilvin
+sudo mkdir -p /mnt/data/homes/maria
+sudo mkdir -p /mnt/data/homes/stephan
+sudo mkdir -p /mnt/data/homes/sofia
+sudo mkdir -p /mnt/data/homes/peter
+sudo mkdir -p /mnt/data/homes/lidia
+sudo mkdir -p /mnt/data/homes/ivan
+sudo chown ilvin:ilvin -R /mnt/data/*
+
+sudo mkdir -p /mnt/mirror/dlna
+sudo mkdir -p /mnt/mirror/share
+sudo mkdir -p /mnt/mirror/homes
+sudo chown ilvin:ilvin -R /mnt/mirror/*
 
 sudo useradd -d /dev/null -s /sbin/nologin maria
 sudo useradd -d /dev/null -s /sbin/nologin stephan
@@ -28,10 +34,11 @@ sudo rm -f /etc/samba/smb.conf
 sudo cp $HOMEDIR/ilvin.git/smb.conf /etc/samba/smb.conf
 sudo service smbd restart
 
-sudo mkdir -p /mnt/dlna/videos
-sudo mkdir -p /mnt/dlna/pictures
-sudo mkdir -p /mnt/dlna/music
-sudo mkdir -p sudo chown ilvin:ilvin -R /mnt/dlna
+sudo mkdir -p /mnt/data/dlna/videos
+sudo mkdir -p /mnt/data/dlna/pictures
+sudo mkdir -p /mnt/data/dlna/music
+sudo mkdir -p /mnt/data/dlna/cache
+sudo mkdir -p sudo chown ilvin:ilvin -R /mnt/data/dlna/*
 
 sudo apt install -y minidlna inotify-tools
 echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
