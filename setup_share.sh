@@ -37,8 +37,10 @@ sudo service smbd restart
 sudo mkdir -p /mnt/data/dlna/videos
 sudo mkdir -p /mnt/data/dlna/pictures
 sudo mkdir -p /mnt/data/dlna/music
-sudo mkdir -p /mnt/data/dlna/cache
 sudo chown ilvin:ilvin -R /mnt/data/dlna/*
+
+sudo mkdir -p /mnt/data/dlna/cache
+sudo chown minidlna:minidlna -R /mnt/data/dlna/cache
 
 sudo apt install -y minidlna inotify-tools
 echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
