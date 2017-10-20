@@ -28,6 +28,7 @@ sudo useradd -d /dev/null -s /sbin/nologin peter
 sudo useradd -d /dev/null -s /sbin/nologin lidia
 sudo useradd -d /dev/null -s /sbin/nologin ivan
 
+sudo service smbd stop
 sudo apt install -y samba
 sudo cp /etc/samba/smb.conf{,.bak}
 sudo rm -f /etc/samba/smb.conf
@@ -42,12 +43,12 @@ sudo chown ilvin:ilvin -R /mnt/data/dlna/*
 sudo mkdir -p /mnt/data/dlna/cache
 sudo chown minidlna:minidlna -R /mnt/data/dlna/cache
 
+sudo service minidlna stop
 sudo apt install -y minidlna inotify-tools
 echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 sudo cp /etc/minidlna.conf{,.bak}
 sudo rm -f /etc/minidlna.conf
 sudo cp $HOMEDIR/ilvin.git/minidlna.conf /etc/minidlna.conf
-sudo service minidlna restart
-
+sudo service minidlna start
 
 

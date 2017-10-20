@@ -4,7 +4,13 @@ sudo apt-get install -y lvm2
 sudo apt-get install -y thin-provisioning-tools
 
 # Remove prevision init
-# sudo umount /mnt/data/* /mnt/mirror/* && sudo vgremove -y vg_data vg_mirror && sudo rm -rf /mnt/* && sudo vim /etc/fstab
+#    sudo service smbd stop \
+#    && sudo service minidlna stop \
+#    && sudo umount /mnt/data/* \
+#    && sudo umount /mnt/mirror/* \
+#    && sudo vgremove -y vg_data vg_mirror \
+#    && sudo rm -rf /mnt/* \
+#    && sudo vim /etc/fstab
 
 do_disk_to_pool () # disk, vg_name, lv_name, mount_opts
 {
@@ -17,26 +23,34 @@ do_disk_to_pool () # disk, vg_name, lv_name, mount_opts
     local LVP="lvp_$VG_NAME"
 
     # Create phisical volumes
+    echo ">>> sudo pvcreate $DISK"
     sudo pvcreate $DISK
 
     # Create volume groups
+    echo ">>> sudo vgcreate $VG $DISK"
     sudo vgcreate $VG $DISK
 
     # Create a thin pools
-    SIZE=`sudo vgs -o vg_free_count --rows $VG | awk '{ print $2 }'`
+    SIZE=`sudo vgs -o vg_size --rows --units b $VG | awk '{ print $2 }'`
 
-    sudo lvcreate -L $SIZE -T $VG/$LVP
+    echo ">>> sudo lvcreate -T -l 100%FREE $VG/$LVP"
+    sudo lvcreate -T -l 100%FREE $VG/$LVP
 
     for LV in $LV_NAMES
     do
-        sudo lvcreate -V $SIZE -T $VG/$LVP -n $LV
+        echo ">>> sudo lvcreate -T -V $SIZE -n $LV $VG/$LVP"
+        sudo lvcreate -T -V $SIZE -n $LV $VG/$LVP
+
+        echo ">>> sudo mkfs -t ext4 /dev/$VG/$LV"
         sudo mkfs -t ext4 /dev/$VG/$LV
         sudo sync /dev/$VG/$LV
 
+        echo ">>> sudo mkdir -p /mnt/$VG_NAME/$LV"
         sudo mkdir -p /mnt/$VG_NAME/$LV
         sudo chown ilvin:ilvin /mnt/$VG_NAME/$LV
         sudo chmod g+s /mnt/$VG_NAME/$LV
 
+        echo ">>> sudo mkdir -p /mnt/snapshots/$VG_NAME/$LV"
         sudo mkdir -p /mnt/snapshots/$VG_NAME/$LV
         sudo chown ilvin:ilvin /mnt/snapshots/$VG_NAME/$LV
         sudo chmod g+s /mnt/snapshots/$VG_NAME/$LV
@@ -49,5 +63,5 @@ do_disk_to_pool () # disk, vg_name, lv_name, mount_opts
     done
 }
 
-#do_disk_to_pool "/dev/sdb" "data" "homes share dlna" "rw,errors=remount-ro,noatime,noexec,async,suid"
-#do_disk_to_pool "/dev/sda" "mirror" "homes share dlna" "rw,errors=remount-ro,noatime,noexec,async,suid"
+#do_disk_to_pool "/dev/sdb" "data" "homes share dlna" "rw,errors=remount-ro,noatime,noexec,async,suid,discard"
+#do_disk_to_pool "/dev/sda" "mirror" "homes share dlna" "rw,errors=remount-ro,noatime,noexec,async,suid,discard"
