@@ -15,6 +15,7 @@ sudo apt-get install -y smartmontools --no-install-recommends
 sudo apt-get install -y nmap
 sudo apt-get install -y bash
 sudo apt-get install -y tmux
+sudo apt-get install -y putty
 sudo apt-get install -y mc
 sudo apt-get install -y curl
 sudo apt-get install -y vim
