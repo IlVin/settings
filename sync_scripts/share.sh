@@ -3,34 +3,62 @@
 # требуется модуль dm-snapshot
 sudo modprobe dm-snapshot
 
+LOG_PATH="/mnt/data/logs/backup.log"
 
-do_rsync () # snap_name, src_path, dst_path
+function log () # message
 {
-    local SNAP_NAME=$1
-    local SRC_PATH=$2
-    local DST_PATH=$3
+    local MESSAGE=$1
 
-    local SNAP_PATH="${SNAP_NAME}-autosnap"
-    local LOG_PATH="${SRC_PATH}/logs/${SNAP_NAME}_rsync.log"
+    echo ">>> ${MESSAGE}"
+}
 
-    local RSYNC_CMD="sudo nice -n 20 rsync --verbose --log-file=${LOG_PATH} --ignore-times --human-readable --inplace --copy-links --copy-dirlinks --perms --executability --xattrs --owner --group --times --recursive --exclude=lost+found --exclude=logs --delete --checksum ${SRC_PATH}/ ${DST_PATH}/"
+function do_rsync () # schadow_copy_name, folder_name
+{
+    local SHADOW_SOPY_NAME=$1
+    local FOLDER_NAME=$2
 
-    SRC_LV_PATH=$(/bin/grep "${SRC_PATH}" /etc/fstab|/usr/bin/awk '{ print $1 }')
-    DST_LV_PATH=$(/bin/grep "${DST_PATH}" /etc/fstab|/usr/bin/awk '{ print $1 }')
+    local SRC_PATH="/mnt/data/$FOLDER_NAME"
+    local DST_PATH="/mnt/mirror/$FOLDER_NAME"
+    local LOG_PATH="/mnt/data/logs/${FOLDER_NAME}/${SHADOW_COPY_NAME}_rsync.log"
 
-    echo "SRC_LV_PATH: ${SRC_LV_PATH}"
-    echo "DST_LV_PATH: ${DST_LV_PATH}"
+    local SNAP_PATH="${SHADOW_COPY_NAME}-autosnap"
 
-    echo "RSYNC: ${RSYNC_CMD}"
+    #local RSYNC_CMD="sudo nice -n 20 rsync -Epogt --checksum --log-file=${LOG_PATH} --partial --human-readable --inplace --copy-links --copy-dirlinks --recursive --exclude=lost+found --delete --no-whole-file ${SRC_PATH}/ ${DST_PATH}/"
+    local RSYNC_CMD="sudo nice -n 20 rsync -Epogt --log-file=${LOG_PATH} --partial --human-readable --inplace --copy-links --copy-dirlinks --recursive --exclude=lost+found --delete --no-whole-file ${SRC_PATH}/ ${DST_PATH}/"
+
+    log "RSYNC: ${RSYNC_CMD}"
 
     eval ${RSYNC_CMD}
 }
 
-NAME=`date -u +GMT-%Y.%m.%d-%H.%M.%S`
+function do_snapshot () # schadow_copy_name, folder_name
+{
+    local SHADOW_COPY_NAME=$1
+    local FOLDER_NAME=$2
 
-do_rsync  ${NAME} "/mnt/data/share" "/mnt/mirror/share"
-do_rsync  ${NAME} "/mnt/data/homes" "/mnt/mirror/homes"
-do_rsync  ${NAME} "/mnt/data/dlna" "/mnt/mirror/dlna"
+    local SRC_PATH="/mnt/data/$FOLDER_NAME"
+    local SRC_SNAP_PATH="/mnt/data/.$FOLDER_NAME/${SHADOW_COPY_NAME}"
+    local DST_PATH="/mnt/mirror/$FOLDER_NAME"
+    local DST_SNAP_PATH="/mnt/mirror/.$FOLDER_NAME/${SHADOW_COPY_NAME}"
+
+    local LOG_PATH="/mnt/data/logs/${FOLDER_NAME}/${SHADOW_COPY_NAME}_snapshot.log"
+
+    SRC_LV_PATH=$(/bin/grep "${SRC_PATH}" /etc/fstab|/usr/bin/awk '{ print $1 }')
+    DST_LV_PATH=$(/bin/grep "${DST_PATH}" /etc/fstab|/usr/bin/awk '{ print $1 }')
+
+    log "SRC_LV_PATH: ${SRC_LV_PATH}"
+    log "DST_LV_PATH: ${DST_LV_PATH}"
+    log "SRC_SNAP_PATH: ${SRC_SNAP_PATH}"
+    log "DST_SNAP_PATH: ${DST_SNAP_PATH}"
+}
+
+SHADOW_COPY_NAME=`date -u +GMT-%Y.%m.%d-%H.%M.%S`
+
+do_rsync  ${SHADOW_COPY_NAME} "share"
+do_rsync  ${SHADOW_COPY_NAME} "homes"
+do_rsync  ${SHADOW_COPY_NAME} "dlna"
+
+do_snapshot ${SHADOW_COPY_NAME} "share"
 
 exit
 DSTPOOL="/dev/mpool"

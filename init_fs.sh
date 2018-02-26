@@ -50,10 +50,10 @@ do_disk_to_pool () # disk, vg_name, lv_name, mount_opts
         sudo chown ilvin:ilvin /mnt/$VG_NAME/$LV
         sudo chmod g+s /mnt/$VG_NAME/$LV
 
-        echo ">>> sudo mkdir -p /mnt/snapshots/$VG_NAME/$LV"
-        sudo mkdir -p /mnt/snapshots/$VG_NAME/$LV
-        sudo chown ilvin:ilvin /mnt/snapshots/$VG_NAME/$LV
-        sudo chmod g+s /mnt/snapshots/$VG_NAME/$LV
+        echo ">>> sudo mkdir -p /mnt/$VG_NAME/.$LV"
+        sudo mkdir -p /mnt/$VG_NAME/.$LV
+        sudo chown ilvin:ilvin /mnt/$VG_NAME/.$LV
+        sudo chmod g+s /mnt/$VG_NAME/.$LV
 
         sudo sh -c "echo '/dev/$VG/$LV /mnt/$VG_NAME/$LV ext4 $MOUNT_OPTS 0 0' >> /etc/fstab"
 
@@ -63,5 +63,5 @@ do_disk_to_pool () # disk, vg_name, lv_name, mount_opts
     done
 }
 
-#do_disk_to_pool "/dev/sdb" "data" "homes share dlna" "rw,errors=remount-ro,noatime,noexec,async,suid,discard"
-#do_disk_to_pool "/dev/sda" "mirror" "homes share dlna" "rw,errors=remount-ro,noatime,noexec,async,suid,discard"
+#do_disk_to_pool "/dev/sdb" "data" "homes share dlna" "rw,errors=remount-ro,noatime,noexec,async,suid,discard,acl,user_xattr"
+#do_disk_to_pool "/dev/sda" "mirror" "homes share dlna" "rw,errors=remount-ro,noatime,noexec,async,suid,discard,acl,user_xattr"
