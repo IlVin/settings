@@ -45,6 +45,8 @@ sudo apt install -y openssh-server
 sudo apt-get install -y xfce4
 sudo apt-get install -y xfce4-session
 sudo apt-get install -y xfce4-goodies
+sudo xfconf-query -c xfce4-session -p /startup/ssh-agent/type -n -t string -s ssh-agent
+# NEED TO SET: [Settings]->[Session and Startup]->[Advanced]->[Launch GNOME services on startup]
 
 # Turn off energy control and screen saver
 sudo xset s off

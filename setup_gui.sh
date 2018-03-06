@@ -12,3 +12,9 @@ sudo apt update
 sudo apt install -y telegram
 
 sudo apt install -y nautilus-dropbox
+
+# Network Manager
+sudo apt install -y network-manager-openvpn
+sudo apt install -y network-manager-openvpn-gnome
+# sudo sed -i 's/^dns=dnsmasq/#dns=dnsmasq/' /etc/NetworkManager/NetworkManager.conf
+sudo service network-manager restart
