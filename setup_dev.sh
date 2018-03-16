@@ -28,6 +28,10 @@ sudo apt-get install -y libboost-all-dev
 sudo apt-get install -y libcurl4-openssl-dev
 sudo apt-get install -y libcurlpp-dev
 
+# Python
+sudo apt install -y python python-pip
+pip install --upgrade pip
+
 # For umbrello
 #sudo apt install -y kinit kio kio-extras kded5
 
