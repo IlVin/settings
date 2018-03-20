@@ -59,11 +59,6 @@ sudo apt install -y console-data
 #sudo dpkg-reconfigure console-data
 sudo dpkg-reconfigure console-setup
 
-# Network Manager
-sudo apt install -y network-manager-openvpn
-sudo apt install -y network-manager-openvpn-gnome
-sudo service network-manager restart
-
 # GUI
 sudo apt install -y firefox
 sudo apt install -y okular
@@ -79,7 +74,12 @@ sudo apt install -y telegram
 
 sudo apt install -y nautilus-dropbox
 
+# Network Manager
+sudo apt install -y network-manager-openvpn
+sudo apt install -y network-manager-openvpn-gnome
+sudo service network-manager restart
 
+# Clean
 sudo apt autoremove
 sudo reboot now
 
