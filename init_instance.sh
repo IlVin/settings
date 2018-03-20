@@ -41,27 +41,8 @@ sudo apt install -y openssh-server
 [ -d ~/.ssh ] || mkdir ~/.ssh
 [ -d ~/.ssh ] && chmod 700 ~/.ssh
 
-# Setup Xfce4
-sudo apt-get install -y xfce4
-sudo apt-get install -y xfce4-session
-sudo apt-get install -y xfce4-goodies
-sudo xfconf-query -c xfce4-session -p /startup/ssh-agent/type -n -t string -s ssh-agent
-# NEED TO SET: [Settings]->[Session and Startup]->[Advanced]->[Launch GNOME services on startup]
-
-# Turn off energy control and screen saver
-sudo xset s off
-sudo xset dpms 0 0 0
-sudo xset -dpms
-
 # Gnome utility
 sudo apt-get install -y gnome-disk-utility
-
-# Setup Display manager
-defdm=`head -n1 /etc/X11/default-display-manager 2>/dev/null`
-if ! [ -f "$defdm" ]; then
-    echo "Setup SLIM DM"
-    sudo apt-get install -y slim
-fi
 
 # GIT
 sudo apt install -y git
@@ -69,14 +50,35 @@ sudo apt install -y git
 git clone https://github.com/IlVin/settings.git ~/ilvin.git/
 
 # Setup console
-sudo locale-gen en_US.UTF-8 ru_RU.UTF-8
 #    sudo update-locale LANG=ru_RU.UTF-8 LANGUAGE=ru_RU:ru:en_US:en
+sudo locale-gen en_US.UTF-8 ru_RU.UTF-8
 sudo update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en
 sudo localedef en_US.UTF-8 -i en_US -f UTF-8
 sudo dpkg-reconfigure locales
 sudo apt install -y console-data
-sudo dpkg-reconfigure console-data
+#sudo dpkg-reconfigure console-data
 sudo dpkg-reconfigure console-setup
+
+# Network Manager
+sudo apt install -y network-manager-openvpn
+sudo apt install -y network-manager-openvpn-gnome
+sudo service network-manager restart
+
+# GUI
+sudo apt install -y firefox
+sudo apt install -y okular
+sudo apt install -y gimp
+sudo apt install -y libavformat-ffmpeg56 libavfilter-ffmpeg5 gstreamer1.0-libav
+sudo apt install -y vlc
+sudo apt purge   -y avahi-daemon
+
+# Telegram
+sudo add-apt-repository ppa:atareao/telegram
+sudo apt update
+sudo apt install -y telegram
+
+sudo apt install -y nautilus-dropbox
+
 
 sudo apt autoremove
 sudo reboot now
