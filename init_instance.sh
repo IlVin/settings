@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Скрипт инициализации вновь созданного инстанса
 
 sudo apt update -y
@@ -12,28 +14,24 @@ sudo apt-get install -y thin-provisioning-tools
 sudo apt-get install -y smartmontools --no-install-recommends
 
 # Setup environment
-sudo apt-get install -y nmap
-sudo apt-get install -y bash
-sudo apt-get install -y tmux
-sudo apt-get install -y putty
-sudo apt-get install -y mc
-sudo apt-get install -y curl
-sudo apt-get install -y vim
-sudo apt-get install -y vim-gtk3
-sudo apt-get install -y rsync
+sudo apt install -y nmap
+sudo apt install -y bash
+sudo apt install -y tmux
+sudo apt install -y putty
+sudo apt install -y mc
+sudo apt install -y curl
+sudo apt install -y vim
+sudo apt install -y rsync
 
-sudo apt-get install -y dconf-tools
-sudo apt-get install -y gv
-sudo apt-get install -y pv
-sudo apt-get install -y parallel
-sudo apt-get install -y liblz4-tool
-sudo apt-get install -y htop
-sudo apt-get install -y sysstat
-sudo apt-get install -y font-manager
-sudo apt-get install -y keychain
+sudo apt install -y dconf-tools
+sudo apt install -y gv
+sudo apt install -y pv
+sudo apt install -y parallel
+sudo apt install -y liblz4-tool
+sudo apt install -y htop
+sudo apt install -y sysstat
+sudo apt install -y keychain
 
-sudo apt-get install -y subversion
-sudo apt-get install -y git-svn
 sudo apt install -y net-tools
 
 # OpenSSH
@@ -41,11 +39,15 @@ sudo apt install -y openssh-server
 [ -d ~/.ssh ] || mkdir ~/.ssh
 [ -d ~/.ssh ] && chmod 700 ~/.ssh
 
-# Gnome utility
-sudo apt-get install -y gnome-disk-utility
-
-# GIT
+# GIT & SVN
 sudo apt install -y git
+git config --global user.email "ilvin@mail.ru"
+git config --global user.name "Ilia Vinokurov"
+git config --global push.default simple
+git config --global receive.denyCurrentBranch ignore
+sudo apt install -y subversion
+sudo apt install -y git-svn
+
 [ -d ~/ilvin.git/ ] && rm -rf ~/ilvin.git/
 git clone https://github.com/IlVin/settings.git ~/ilvin.git/
 
@@ -58,27 +60,7 @@ sudo dpkg-reconfigure locales
 sudo apt install -y console-data
 sudo dpkg-reconfigure console-setup
 
-# GUI
-sudo apt install -y firefox
-sudo apt install -y okular
-sudo apt install -y gimp
-sudo apt install -y libavformat-ffmpeg56 libavfilter-ffmpeg5 gstreamer1.0-libav
-sudo apt install -y vlc
-sudo apt purge   -y avahi-daemon
-
-# Telegram
-sudo add-apt-repository ppa:atareao/telegram
-sudo apt update
-sudo apt install -y telegram
-
-sudo apt install -y nautilus-dropbox
-
-# Network Manager
-sudo apt install -y network-manager-openvpn
-sudo apt install -y network-manager-openvpn-gnome
-sudo service network-manager restart
-
 # Clean
+sudo apt purge   -y avahi-daemon
 sudo apt autoremove
-sudo reboot now
 
