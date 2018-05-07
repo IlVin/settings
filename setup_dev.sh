@@ -20,6 +20,7 @@ sudo apt-get install -y oracle-java9-set-default
 sudo apt install -y graphviz
 
 # C++
+sudo apt install -y build-essential
 sudo apt install -y clang
 sudo update-alternatives --config c++
 
