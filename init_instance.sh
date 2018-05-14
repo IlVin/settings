@@ -33,6 +33,7 @@ sudo apt install -y sysstat
 sudo apt install -y keychain
 
 sudo apt install -y net-tools
+sudo apt install -y apt-utils
 
 # OpenSSH
 sudo apt install -y openssh-server

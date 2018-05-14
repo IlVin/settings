@@ -1,4 +1,4 @@
 
 # Mbed
-pip install mbed-cli
+sudo pip install mbed-cli
 
