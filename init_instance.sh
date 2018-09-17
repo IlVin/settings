@@ -9,9 +9,9 @@ cd ~
 HOMEDIR=`pwd`
 
 # System
-sudo apt-get install -y lvm2
-sudo apt-get install -y thin-provisioning-tools
-sudo apt-get install -y smartmontools --no-install-recommends
+#sudo apt-get install -y lvm2
+#sudo apt-get install -y thin-provisioning-tools
+#sudo apt-get install -y smartmontools --no-install-recommends
 
 # Setup environment
 sudo apt install -y nmap
@@ -49,8 +49,8 @@ git config --global receive.denyCurrentBranch ignore
 sudo apt install -y subversion
 sudo apt install -y git-svn
 
-[ -d ~/ilvin.git/ ] && rm -rf ~/ilvin.git/
-git clone https://github.com/IlVin/settings.git ~/ilvin.git/
+#[ -d ~/ilvin.git/ ] && rm -rf ~/ilvin.git/
+#git clone https://github.com/IlVin/settings.git ~/ilvin.git/
 
 # Setup console
 #    sudo update-locale LANG=ru_RU.UTF-8 LANGUAGE=ru_RU:ru:en_US:en
@@ -62,6 +62,6 @@ sudo apt install -y console-data
 sudo dpkg-reconfigure console-setup
 
 # Clean
-sudo apt purge   -y avahi-daemon
+#sudo apt purge   -y avahi-daemon
 sudo apt autoremove
 

@@ -45,3 +45,6 @@ export LC_ALL=en_US.UTF-8
 # https://github.com/espressif/ESP8266_RTOS_SDK
 export IDF_PATH=~/esp/ESP8266_RTOS_SDK
 export PATH=~/esp/xtensa-lx106-elf/bin:$PATH
+
+# xubuntu самостоятельно менеджерит ssh-agent
+#eval $(ssh-agent)
