@@ -31,7 +31,15 @@ sudo apt-get install -y libcurlpp-dev
 
 # Python
 sudo apt install -y python python-pip
-pip install --upgrade pip
+sudo -H pip install --upgrade pip
+sudo apt-get -y install python-dev python-setuptools python-requests libxml2-dev libxslt1-dev libz-dev
+sudo apt-get -y install libffi-dev libssl-dev
+sudo apt --auto-remove --yes purge python-openssl
+sudo apt install --reinstall python-openssl -y
+sudo pip install setuptools --upgrade
+sudo python -m easy_install --upgrade pyOpenSSL
+sudo -H pip install --upgrade cryptography
+sudo -H pip install --upgrade zstandard
 
 # For umbrello
 #sudo apt install -y kinit kio kio-extras kded5
