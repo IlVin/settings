@@ -14,16 +14,15 @@ function RELEASE() {
 }
 
 function apt_upgrade() {
-    sudo apt update
-    sudo apt upgrade -y
+    sudo apt update -yqq
 
-    sudo apt install -y \
+    sudo apt install -yqq \
         apt-utils \
         apt-transport-https \
         software-properties-common \
         ca-certificates \
 
-    sudo apt dist-upgrade -y
+    sudo apt dist-upgrade -yqq --allow-downgrades
     sudo ldconfig
 }
 
@@ -43,52 +42,21 @@ function set_locales() {
     sudo ldconfig
 }
 
-function install_nginx() {
+function install_docker() {
     LSB=$(LSB)
-    # Add nginx repository
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ABF5BD827BD9BF62
-    sudo add-apt-repository "deb http://nginx.org/packages/ubuntu/ ${LSB} nginx"
-    sudo apt update
-    sudo apt purge -y nginx.*
-    sudo apt install -y \
-        nginx \
+    # Docker
+    sudo apt purge -yqq docker docker-engine docker.io containerd runc docker-ce docker-ce-cli containerd.io
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    sudo apt-key fingerprint 0EBFCD88
+    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu ${LSB} stable"
 
-}
+    sudo apt install -yqq docker-ce docker-ce-cli containerd.io
+    sudo apt-cache madison docker-ce
 
-function install_unit() {
-    LSB=$(LSB)
-    curl 'https://nginx.org/keys/nginx_signing.key' > ~/nginx_signing.key
-    sudo apt-key add ~/nginx_signing.key
-    sudo add-apt-repository "deb https://packages.nginx.org/unit/ubuntu/ ${LSB} unit"
-    sudo add-apt-repository "deb-src https://packages.nginx.org/unit/ubuntu/ ${LSB} unit"
-    sudo apt update
-    sudo apt purge -y unit.*
-    sudo apt purge -y php.*
-    sudo apt install -y \
-        unit-php \
-        unit-go1.10 \
-        unit-perl \
-        unit-dev \
-        php-mysql \
-        php-gd \
-        php-json \
-        php-xml \
-        php-ssh2 \
-        php-oauth \
-        #php-fpm \
-        #unit-ruby \
-        #unit-jsc-common \
-        #unit-jsc8 \
-        #unit-jsc10 \
-        #unit-python2.7 \
-        #unit-python3.6 \
-        #unit-go1.9 \
-
-    #sudo service unit restart
-    #cd /usr/share/doc/unit-jsc10/examples
-    #sudo curl -X PUT --data-binary @unit.config --unix-socket /var/run/control.unit.sock http://localhost/config
-    #curl http://localhost:8800/
-
+    [[ $(getent group docker) ]] || sudo groupadd docker
+    sudo usermod -aG docker ${USER}
+    #sudo gpasswd -a ${USER} docker
+    sudo systemctl --no-pager status docker
 }
 
 function install_mariadb() {
@@ -98,9 +66,9 @@ function install_mariadb() {
     sudo apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
     #sudo add-apt-repository "deb [arch=amd64,arm64,ppc64el] http://mirror.mephi.ru/mariadb/repo/10.3/ubuntu ${LSB} main"
     sudo add-apt-repository "deb [arch=amd64] http://nyc2.mirrors.digitalocean.com/mariadb/repo/10.3/ubuntu ${LSB} main"
-    sudo apt update
-    sudo apt purge -y mariadb.*
-    sudo apt install -y \
+
+    sudo apt purge -yqq mariadb.*
+    sudo apt install -yqq \
         mariadb-server \
         mariadb-client \
 
@@ -188,21 +156,6 @@ function install_yii() {
     cd ~ && sudo mv composer.phar /usr/local/bin/composer
 }
 
-function install_docker() {
-    LSB=$(LSB)
-    # Docker
-    sudo apt purge -y docker docker-engine docker.io containerd runc docker-ce docker-ce-cli containerd.io
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    sudo apt-key fingerprint 0EBFCD88
-    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu ${LSB} stable"
-
-    sudo apt update
-    sudo apt install -y docker-ce docker-ce-cli containerd.io
-    sudo apt-cache madison docker-ce
-    sudo usermod -aG docker $(whoami)
-    sudo systemctl --no-pager status docker
-}
-
 function build_container() {
     RELEASE=$(RELEASE)
     CONTAINER_DIR=$(WORK_DIR)/container
@@ -213,9 +166,9 @@ cat << EOF > ${CONTAINER_DIR}/install.sh
 
     export DEBIAN_FRONTEND=noninteractive
 
-    apt-get update -qq
+    apt-get update -yqq
 
-    apt-get install -y --no-install-recommends --no-install-suggests \
+    apt-get install -yqq --no-install-recommends --no-install-suggests \
         ca-certificates \
         bash \
         apt-utils \
@@ -228,9 +181,9 @@ cat << EOF > ${CONTAINER_DIR}/install.sh
         gnupg2 \
         curl \
 
-    apt-get dist-upgrade -y --allow-downgrades
-    apt-get autoremove -y
-    apt-get autoclean -y
+    apt-get dist-upgrade -yqq --allow-downgrades
+    apt-get autoremove -yqq
+    apt-get autoclean -yqq
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
     # Setup locales
@@ -249,10 +202,10 @@ EOF
     chmod a+x ${CONTAINER_DIR}/install.sh
 
 cat << EOF > ${CONTAINER_DIR}/Dockerfile
-    FROM ubuntu:latest
+    #FROM ubuntu:latest
     #FROM phusion/baseimage:latest
     #FROM nginx/unit:latest
-    #FROM debian:stretch-slim
+    FROM debian:stretch-slim
     MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
 
     ADD ./ /container
@@ -265,6 +218,109 @@ EOF
     cd ${CONTAINER_DIR} && sudo docker build -t container:v001 ./
     cd ${RETPATH}
     sudo docker image ls
+}
+
+function build_nginx_unit_container() {
+    RELEASE=$(RELEASE)
+    IMAGE='nginx_unit_container'
+    CONTAINER_DIR=$(WORK_DIR)/${IMAGE}
+    mkdir -p ${CONTAINER_DIR}
+
+cat << EOF > ${CONTAINER_DIR}/install.sh
+#!/bin/bash -x
+
+    export DEBIAN_FRONTEND=noninteractive
+    export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+
+    apt-get update -yqq
+
+    apt install -yqq \
+        curl \
+        jq \
+
+    #service unit restart
+    #cd /usr/share/doc/unit-jsc10/examples
+    #curl -X PUT --data-binary @unit.config --unix-socket /var/run/control.unit.sock http://localhost/config
+    #curl http://localhost:8800/
+
+    apt-get autoremove -yqq && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/unit.list
+
+    #ln -sf /dev/stdout /var/log/unit.log
+    rm -f /var/log/unit.log
+EOF
+
+    chmod a+x ${CONTAINER_DIR}/install.sh
+
+
+cat << EOF > ${CONTAINER_DIR}/config.json
+    {
+        "settings": {
+            "http": {
+                "header_read_timeout": 10,
+                "body_read_timeout": 10,
+                "send_timeout": 10,
+                "idle_timeout": 120,
+                "max_body_size": 6291456
+            }
+        },
+        "listeners": {
+            "*:8080": {
+                "pass": "applications/prod"
+            },
+            "*:8081": {
+                "pass": "applications/dev"
+            }
+        },
+        "applications": {
+            "prod": {
+                "type": "php",
+                "processes": 20,
+                "root": "/www/prod/",
+                "index": "index.php"
+            },
+            "dev": {
+                "type": "php",
+                "processes": 3,
+                "root": "/www/dev/",
+                "index": "index.php"
+            }
+        }
+    }
+EOF
+
+cat << EOF > ${CONTAINER_DIR}/start.sh
+#!/bin/bash -x
+    /usr/sbin/unitd --no-daemon --control unix:/var/run/control.unit.sock &>>/var/log/unit.log &
+    curl -X PUT -d @/${IMAGE}/config.json  \
+       --unix-socket /var/run/control.unit.sock http://localhost/config/ \
+       &>>/var/log/unit_configure.log
+EOF
+
+    chmod a+x ${CONTAINER_DIR}/start.sh
+
+cat << EOF > ${CONTAINER_DIR}/Dockerfile
+    FROM nginx/unit
+    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
+
+    ENV UNIT_VERSION          1.8.0-1~stretch
+    ADD ./ /${IMAGE}
+
+    RUN /${IMAGE}/install.sh
+
+    STOPSIGNAL SIGTERM
+
+    CMD ["${CONTAINER_DIR}/start.sh"]
+
+EOF
+
+    mkdir -p ${CONTAINER_DIR}/www/prod/htdocs
+    mkdir -p ${CONTAINER_DIR}/www/dev/htdocs
+
+    RETPATH=$(pwd)
+    cd ${CONTAINER_DIR} && sudo docker build -t ${IMAGE}:v001 ./
+    cd ${RETPATH}
+    sudo docker image ls
+
 }
 
 function build_unit_container() {
@@ -282,8 +338,10 @@ cat << EOF > ${CONTAINER_DIR}/install.sh
     curl 'https://nginx.org/keys/nginx_signing.key' > /unit_container/nginx_signing.key
     apt-key add /unit_container/nginx_signing.key
     add-apt-repository "deb https://packages.nginx.org/unit/ubuntu/ \${LSB} unit"
-    add-apt-repository "deb-src https://packages.nginx.org/unit/ubuntu/ \${LSB} unit"
-    apt install -y \
+
+    apt-get update -yqq
+
+    apt install -yqq \
         unit-php \
         unit-go1.10 \
         unit-perl \
@@ -309,7 +367,7 @@ cat << EOF > ${CONTAINER_DIR}/install.sh
     #curl -X PUT --data-binary @unit.config --unix-socket /var/run/control.unit.sock http://localhost/config
     #curl http://localhost:8800/
 
-    apt-get autoremove -y && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/unit.list
+    apt-get autoremove -yqq && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/unit.list
 
     ln -sf /dev/stdout /var/log/unit.log
 EOF
@@ -376,18 +434,37 @@ function run_unit_container() {
 #        --dns 2a02:6b8:0:3400::1023 \
 }
 
-#apt_upgrade
-#set_timezone
-#set_locales
-#install_tools
+function run_nginx_unit_container() {
+    IMAGE=nginx_unit_container:v001
+    COMMAND=/bin/bash
+
+    HOSTNAME=$(hostname)
+
+    sudo docker run \
+        --rm \
+        -it \
+        -v ${HOME}/ilvin.git/wp/nginx_unit_container/www/prod/htdocs:/www/prod/:ro \
+        -v ${HOME}/ilvin.git/wp/nginx_unit_container/www/dev/htdocs:/www/dev/:rw \
+        -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+        -e USER=$USER \
+        -h $HOSTNAME \
+        ${IMAGE} \
+        ${COMMAND}
+}
+
+set_timezone
+set_locales
+install_tools
+apt_upgrade
+install_docker
 #install_nginx
 #install_unit
 #install_mariadb
 #install_yii
-#install_docker
 #build_container
-build_unit_container
-run_unit_container
+#build_unit_container
+#build_nginx_unit_container
+#run_nginx_unit_container
 #sudo apt autoremove -y
 
 exit
