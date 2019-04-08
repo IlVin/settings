@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 function WORK_DIR() {
     echo "${HOME}/ilvin.git/wp"
@@ -45,13 +45,14 @@ function set_locales() {
 function install_docker() {
     LSB=$(LSB)
 
-    # Set kernel (-10% performance, -1% memory)
+    # Set kernel (-10% performance, -1% memory). It's fix of the docker's warn 'Your kernel does not support swap memory limit'
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)cgroup_enable=[^" ]+([^"]*)"/GRUB_CMDLINE_LINUX="\1\2"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)  ([^"]*)"/GRUB_CMDLINE_LINUX="\1 \2"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)swapaccount=[^" ]+([^"]*)"/GRUB_CMDLINE_LINUX="\1\2"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)  ([^"]*)"/GRUB_CMDLINE_LINUX="\1 \2"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*) "/GRUB_CMDLINE_LINUX="\1"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]+)"/GRUB_CMDLINE_LINUX="\1 cgroup_enable=memory swapaccount=1"/g' /etc/default/grub
+    sudo update-grub
 
     # Docker
     sudo apt purge -yqq docker docker-engine docker.io containerd runc docker-ce docker-ce-cli containerd.io
