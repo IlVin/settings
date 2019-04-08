@@ -17,8 +17,6 @@ function RELEASE() {
 }
 
 function apt_upgrade() {
-    sudo apt update -yqq
-
     sudo apt install -yqq \
         apt-utils \
         apt-transport-https \
@@ -166,6 +164,7 @@ function install_tools() {
 
 }
 
+sudo apt update -yqq
 
 set_timezone
 set_locales
