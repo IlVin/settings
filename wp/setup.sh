@@ -1,5 +1,8 @@
 #!/bin/bash -x
 
+export DEBIAN_FRONTEND=noninteractive
+export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+
 function WORK_DIR() {
     echo "${HOME}/ilvin.git/wp"
 }
@@ -46,12 +49,15 @@ function install_docker() {
     LSB=$(LSB)
 
     # Set kernel (-10% performance, -1% memory). It's fix of the docker's warn 'Your kernel does not support swap memory limit'
+    #  cgroup_enable=memory cgroup_memory=1 swapaccount=1
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)cgroup_enable=[^" ]+([^"]*)"/GRUB_CMDLINE_LINUX="\1\2"/g' /etc/default/grub
+    sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)  ([^"]*)"/GRUB_CMDLINE_LINUX="\1 \2"/g' /etc/default/grub
+    sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)cgroup_memory=[^" ]+([^"]*)"/GRUB_CMDLINE_LINUX="\1\2"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)  ([^"]*)"/GRUB_CMDLINE_LINUX="\1 \2"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)swapaccount=[^" ]+([^"]*)"/GRUB_CMDLINE_LINUX="\1\2"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*)  ([^"]*)"/GRUB_CMDLINE_LINUX="\1 \2"/g' /etc/default/grub
     sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]*) "/GRUB_CMDLINE_LINUX="\1"/g' /etc/default/grub
-    sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]+)"/GRUB_CMDLINE_LINUX="\1 cgroup_enable=memory swapaccount=1"/g' /etc/default/grub
+    sudo sed -i -r 's/GRUB_CMDLINE_LINUX="([^"]+)"/GRUB_CMDLINE_LINUX="\1 cgroup_enable=memory cgroup_memory=1 swapaccount=1"/g' /etc/default/grub
     sudo update-grub
 
     # Docker
@@ -66,6 +72,7 @@ function install_docker() {
     [[ $(getent group docker) ]] || sudo groupadd docker
     sudo usermod -aG docker ${USER}
     #sudo gpasswd -a ${USER} docker
+    sudo systemctl enable docker.service
     sudo systemctl --no-pager status docker
 }
 
@@ -84,16 +91,15 @@ function install_mariadb() {
 
 }
 
-function install_php() {
-    sudo apt purge -y php.*
-    sudo apt install -y \
-        php-mysql \
-        php-gd \
-        php-json \
-        php-xml \
-        php-ssh2 \
-        php-oauth \
-        php-fpm \
+function install_nginx() {
+    LSB=$(LSB)
+    # Add nginx repository
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ABF5BD827BD9BF62
+    sudo add-apt-repository "deb http://nginx.org/packages/ubuntu/ ${LSB} nginx"
+
+    sudo apt purge -yqq nginx.*
+    sudo apt install -yqq \
+        nginx \
 
 }
 
@@ -158,76 +164,6 @@ function install_tools() {
         openssh-server \
         autossh \
 
-}
-
-function install_yii() {
-    # Yii
-    cd ~ && curl -sS https://getcomposer.org/installer | php
-    cd ~ && sudo mv composer.phar /usr/local/bin/composer
-}
-
-function build_container() {
-    RELEASE=$(RELEASE)
-    CONTAINER_DIR=$(WORK_DIR)/container
-    mkdir -p ${CONTAINER_DIR}
-
-cat << EOF > ${CONTAINER_DIR}/install.sh
-#!/bin/bash -x
-
-    export DEBIAN_FRONTEND=noninteractive
-
-    apt-get update -yqq
-
-    apt-get install -yqq --no-install-recommends --no-install-suggests \
-        ca-certificates \
-        bash \
-        apt-utils \
-        apt-transport-https \
-        software-properties-common \
-        tzdata \
-        locales \
-        lsb-core \
-        gnupg1 \
-        gnupg2 \
-        curl \
-
-    apt-get dist-upgrade -yqq --allow-downgrades
-    apt-get autoremove -yqq
-    apt-get autoclean -yqq
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-    # Setup locales
-    for LOC in ru_RU en_US
-    do
-        locale-gen \${LOC}.UTF-8
-    done
-    localedef ru_RU.UTF-8 -i ru_RU -f UTF-8;
-
-    # Timezone setup
-    ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
-    dpkg-reconfigure --frontend noninteractive tzdata
-
-    ldconfig
-EOF
-    chmod a+x ${CONTAINER_DIR}/install.sh
-
-cat << EOF > ${CONTAINER_DIR}/Dockerfile
-    #FROM ubuntu:latest
-    #FROM phusion/baseimage:latest
-    #FROM nginx/unit:latest
-    FROM debian:stretch-slim
-    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
-
-    ADD ./ /container
-
-    RUN /container/install.sh
-
-EOF
-
-    RETPATH=$(pwd)
-    cd ${CONTAINER_DIR} && sudo docker build -t container:v001 ./
-    cd ${RETPATH}
-    sudo docker image ls
 }
 
 function build_nginx_unit_container() {
@@ -466,16 +402,17 @@ set_timezone
 set_locales
 install_tools
 apt_upgrade
+install_mariadb
+install_nginx
 install_docker
-#install_nginx
 #install_unit
-#install_mariadb
 #install_yii
 #build_container
 #build_unit_container
 #build_nginx_unit_container
 #run_nginx_unit_container
-#sudo apt autoremove -y
+
+sudo apt autoremove -yqq
 
 exit
 
