@@ -1,27 +1,17 @@
-#!/bin/sh
+#!/bin/sh +x
+
+./set_env.sh
 
 # OpenSSH
-[ -d ~/.ssh ] || mkdir ~/.ssh
-[ -d ~/.ssh ] && chmod 700 ~/.ssh
+function setup_openssh() {
+    [ -d ~/.ssh ] || mkdir ~/.ssh
+    [ -d ~/.ssh ] && chmod 700 ~/.ssh
+}
 
-DB_NAME="wp_hosting"
-DB_USER=${USER}
-DB_PASSWORD="P@ssw0rd"
-DB_HOST="localhost"
-
-NGINX_USER="nginx"
-PHP_USER="php"
-FS_USER=${USER}
-
-GROUP="www-data"
-
-########################
-#    DNS               #
-########################
-
-SITENAME="wp.iv77msk.ru"
-sudo sed --in-place "s/127\.0\.0\.1\s+${SITENAME}//g" /etc/hosts
-echo "127.0.0.1 ${SITENAME}" | sudo tee -a /etc/hosts > /dev/null
+function setup_hosts() {
+    sudo sed --in-place "s/127\.0\.0\.1\s+${PRJ_DOMAIN}//g" /etc/hosts
+    echo "127.0.0.1 ${PRJ_DOMAIN}" | sudo tee -a /etc/hosts > /dev/null
+}
 
 
 ########################
@@ -44,13 +34,6 @@ done
 #    FOLDERS           #
 ########################
 
-PROJECT_DIR="/www/${SITENAME}"
-HTDOCS_DIR="${PROJECT_DIR}/htdocs"
-WP_DIR="${HTDOCS_DIR}"
-LOG_DIR="${PROJECT_DIR}/logs"
-DB_DIR="${PROJECT_DIR}/mysql"
-SOFT_DIR="${PROJECT_DIR}/soft"
-CONF_DIR="${PROJECT_DIR}/conf"
 
 [ -d ${HTDOCS_DIR} ] && rm -rf ${HTDOCS_DIR}/*
 for DIR in ${PROJECT_DIR} ${HTDOCS_DIR} ${LOG_DIR} ${DB_DIR} ${SOFT_DIR} ${WP_DIR} ${CONF_DIR}
