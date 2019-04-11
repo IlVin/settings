@@ -22,27 +22,27 @@ function run_container() {
 }
 
 function run_nginx() {
-    IMAGE=2bcb04bdb83f
+    IMAGE="nginx:latest"
     HOSTNAME=$(hostname)
-    COMMAND='nginx'
+    CONTAINER_NAME="${PRJ_NAME}_nginx"
+
+    sudo docker kill ${CONTAINER_NAME}
 
     sudo docker run \
-        --name "${PRJ_NAME}_nginx" \
+        --name ${CONTAINER_NAME} \
         --rm \
         -it \
         --detach \
         --read-only \
         -v ${CONF_DIR}/nginx.conf:/etc/nginx/conf.d/${PRJ_DOMAIN}.conf:ro \
-        -v ${HTDOCS_DIR}:/usr/share/nginx/html:ro \
-        -v ${HTDOCS_DIR}:/www/${PRJ_DOMAIN}/htdocs:ro \
+        -v ${HTDOCS_DIR}:${HTDOCS_DIR}:ro \
         -v ${LOG_DIR}/nginx/:/var/log/nginx/:rw \
-        -v ${CACHE_DIR}:/var/cache/nginx:rw \
+        -v ${CACHE_DIR}/nginx/:/var/cache/nginx:rw \
         -v ${PID_DIR}/nginx.pid:/var/run/nginx.pid:rw \
         -h $HOSTNAME \
         --publish 80:80 \
         --publish 443:443 \
-        ${IMAGE} \
-        #${COMMAND}
+        ${IMAGE}
 }
 
 function run_nginx_unit_container() {

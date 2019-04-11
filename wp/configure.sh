@@ -98,8 +98,6 @@ EOF
             root ${HTDOCS_DIR};
             index index.php;
 
-            ${RESTRICTIONS}
-
             location / {
                 try_files \$uri \$uri/ /index.php?\$args ;
             }
@@ -111,18 +109,20 @@ EOF
                 fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
                 fastcgi_index index.php;
                 fastcgi_pass unix:/run/php/php7.2-fpm.sock;
-                fastcgi_param  DB_NAME "${DB_NAME}";
-                fastcgi_param  DB_USER "${DB_USER}";
-                fastcgi_param  DB_PASSWORD "${DB_PASSWORD}";
-                fastcgi_param  DB_HOST "${DB_HOST}";
+                fastcgi_param  DB_NAME "${DB_PROD_NAME}";
+                fastcgi_param  DB_USER "${DB_PROD_USER}";
+                fastcgi_param  DB_PASSWORD "${DB_PROD_PASSWORD}";
+                fastcgi_param  DB_HOST "${DB_PROD_HOST}";
                 #gzip on;
                 #gzip_comp_level 4;
                 #gzip_proxied any;
             }
+
             location ~* \\.(js|css|png|jpg|jpeg|gif|ico)$ {
                 expires max;
                 log_not_found off;
             }
+
         }
 EOF
 }
