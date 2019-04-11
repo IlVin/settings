@@ -306,3 +306,16 @@ EOF
     cd ${RETPATH}
     sudo docker image ls
 }
+
+########################
+#    PHP               #
+########################
+function configure_php() {
+    sudo sed -i 's/^;cgi\.fix_pathinfo=1/cgi\.fix_pathinfo=0/g' /etc/php/7.2/fpm/php.ini
+    sudo sed -i "s/^user = www-data/user = ${PHP_USER}/g" /etc/php/7.2/fpm/pool.d/www.conf
+    sudo sed -i "s/^group = www-data/group = ${GROUP}/g" /etc/php/7.2/fpm/pool.d/www.conf
+
+    sudo sed -i "s/^listen.owner = www-data/listen.owner = ${PHP_USER}/g" /etc/php/7.2/fpm/pool.d/www.conf
+    sudo sed -i "s/^listen.group = www-data/listen.group = ${GROUP}/g" /etc/php/7.2/fpm/pool.d/www.conf
+}
+
