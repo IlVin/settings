@@ -35,6 +35,7 @@ function run_nginx() {
         --detach \
         --read-only \
         -v ${CONF_DIR}/nginx.conf:/etc/nginx/conf.d/${PRJ_DOMAIN}.conf:ro \
+        -v ${CERT_DIR}:${CERT_DIR}:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:ro \
         -v ${LOG_DIR}/nginx/:/var/log/nginx/:rw \
         -v ${CACHE_DIR}/nginx/:/var/cache/nginx:rw \

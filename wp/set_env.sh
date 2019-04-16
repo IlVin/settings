@@ -2,6 +2,7 @@
 
 # Проект
 export PRJ_DOMAIN="wp.iv77msk.ru"
+export PRJ_EMAIL="ilvin@mail.ru"
 export PRJ_NAME=${PRJ_DOMAIN}
 export PRJ_ROOT="/www/${PRJ_NAME}"
 export PRJ_OWNER="www"

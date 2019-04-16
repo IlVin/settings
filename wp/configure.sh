@@ -44,34 +44,70 @@ function setup_folders() {
 function generate_cert() {
     set +x
 
-    # Приватный ключ центра сертификации
-    openssl genrsa -out ${CERT_DIR}/ca.key 4096
+    # https://www.opennet.ru/base/sec/ssl_cert.txt.html
 
+    # Приватный ключ центра сертификации
+    # openssl genrsa -out ${CERT_DIR}/${PRJ_DOMAIN}_ca.key 4096
     # Самоподписанный сертификат
-    openssl req -new -sha256 -x509 -days 10950 -key ${CERT_DIR}/ca.key -out ${CERT_DIR}/ca.crt
+    # openssl req -new -sha256 -x509 -key ${CERT_DIR}/ca.key -out ${CERT_DIR}/ca.crt
+
+    # ЦЕНТР СЕРТИФИКАЦИИ: сертификат + приватный ключ
+    openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+        -x509 \
+        -days 10000 \
+        -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ CA/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt
 
     # Приватный ключ web-сервера
-    openssl genrsa -out ${CERT_DIR}/server.key 4096
-
+    # openssl genrsa -out ${CERT_DIR}/server.key 4096
     # Сертификат для WEB-сервера
-    openssl req -new -key ${CERT_DIR}/server.key -sha256 -out ${CERT_DIR}/server.csr
+    # openssl req -new -key ${CERT_DIR}/server.key -sha256 -out ${CERT_DIR}/server.csr
+
+    # WEB-сервер: сертификат + приватный ключ
+    openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_server.key \
+        -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_server.csr
 
     # Подписываем сертификат WEB-сервера нашим центром сертификации
-    openssl x509 -req -days 10950 -in ${CERT_DIR}/server.csr -CA ${CERT_DIR}/ca.crt -CAkey ${CERT_DIR}/ca.key -set_serial 0x`openssl rand -hex 16` -sha256 -out ${CERT_DIR}/server.pem
+    openssl x509 -req -days 10950 \
+        -in ${CERT_DIR}/${PRJ_DOMAIN}_server.csr \
+        -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
+        -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+        -set_serial 0x`openssl rand -hex 16` \
+        -sha256 \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_server.pem
 
     # клиентский приватный ключ
-    openssl genrsa -out ${CERT_DIR}/client.key 4096
-
+    # openssl genrsa -out ${CERT_DIR}/client.key 4096
     # клиентский сертификат
-    openssl req -new -key ${CERT_DIR}/client.key -sha256 -out ${CERT_DIR}/client.csr
+    # openssl req -new -key ${CERT_DIR}/client.key -sha256 -out ${CERT_DIR}/client.csr
+
+    # КЛИЕНТ: сертификат + приватный ключ
+    openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
+        -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.csr
 
     # Подписываем клиентский сертификат нашим центром сертификации.
-    openssl x509 -req -days 10950 -in ${CERT_DIR}/client.csr -CA ${CERT_DIR}/ca.crt -CAkey ${CERT_DIR}/ca.key -set_serial 0x`openssl rand -hex 16` -sha256 -out ${CERT_DIR}/client.pem
+    # openssl ca -config ca.config -in client01.csr -out client01.crt -batch
+    openssl x509 -req -days 10950 \
+        -in ${CERT_DIR}/${PRJ_DOMAIN}_client.csr \
+        -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
+        -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+        -set_serial 0x`openssl rand -hex 16` \
+        -sha256 \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.pem
 
     #  Создание сертфиката в формате PKCS#12 для браузеров
-    openssl pkcs12 -export -in ${CERT_DIR}/client.pem -inkey ${CERT_DIR}/client.key -name "Sub-domain certificate for ${PRJ_DOMAIN}" -out ${CERT_DIR}/client.p12
+    openssl pkcs12 -export \
+        -in ${CERT_DIR}/${PRJ_DOMAIN}_client.pem \
+        -inkey ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
+        -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
+        -passout pass: \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.p12
 }
-
 
 function configure_nginx() {
     RESTRICTIONS=<<EOF
@@ -122,9 +158,18 @@ function configure_nginx() {
 EOF
 
     cat << EOF | sudo tee ${CONF_DIR}/nginx.conf > /dev/null
+        ssl_certificate     ${CERT_DIR}/${PRJ_DOMAIN}_server.pem;
+        ssl_certificate_key ${CERT_DIR}/${PRJ_DOMAIN}_server.key;
+        ssl_trusted_certificate ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt;
+        ssl_client_certificate ${CERT_DIR}/${PRJ_DOMAIN}_client.pem;
+        ssl_stapling on;
+        ssl_verify_client optional;
+
         server {
             listen 80 default_server;
             listen [::]:80 default_server;
+            listen 443 ssl default_server;
+            listen [::]:443 ssl default_server;
             server_name ${PRJ_DOMAIN};
 
             root ${HTDOCS_DIR};
