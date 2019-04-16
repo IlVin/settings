@@ -160,6 +160,7 @@ function install_tools() {
         unzip \
         bzip2 \
         openssh-server \
+        openssl \
         autossh \
 
 }
@@ -178,6 +179,7 @@ sudo apt autoremove -yqq
 sudo ldconfig
 
 exit
+
 
 
 

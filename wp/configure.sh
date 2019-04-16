@@ -35,11 +35,41 @@ function setup_users_groups() {
 }
 
 function setup_folders() {
-    for DIR in ${PRJ_ROOT} ${CONF_DIR} ${HTDOCS_DIR} ${WP_DIR} ${LOG_DIR} ${DB_DIR} ${SOFT_DIR} ${CACHE_DIR} ${PID_DIR}
+    for DIR in ${PRJ_ROOT} ${CONF_DIR} ${HTDOCS_DIR} ${WP_DIR} ${LOG_DIR} ${DB_DIR} ${SOFT_DIR} ${CACHE_DIR} ${PID_DIR} ${CERT_DIR}
     do
         sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${DIR}
     done
 }
+
+function generate_cert() {
+    # Приватный ключ центра сертификации
+    openssl genrsa -out ${CERT_DIR}/ca.key 4096
+
+    # Самоподписанный сертификат
+    openssl req -new -sha256 -x509 -days 10950 -key ${CERT_DIR}/ca.key -out ${CERT_DIR}/ca.crt
+
+    # Приватный ключ web-сервера
+    openssl genrsa -out ${CERT_DIR}/server.key 4096
+
+    # Сертификат для WEB-сервера
+    openssl req -new -key ${CERT_DIR}/server.key -sha256 -out ${CERT_DIR}/server.csr
+
+    # Подписываем сертификат WEB-сервера нашим центром сертификации
+    openssl x509 -req -days 10950 -in ${CERT_DIR}/server.csr -CA ${CERT_DIR}/ca.crt -CAkey ${CERT_DIR}/ca.key -set_serial 0x`openssl rand -hex 16` -sha256 -out ${CERT_DIR}/server.pem
+
+    # клиентский приватный ключ
+    openssl genrsa -out ${CERT_DIR}/client.key 4096
+
+    # клиентский сертификат
+    openssl req -new -key ${CERT_DIR}/client.key -sha256 -out ${CERT_DIR}/client.csr
+
+    # Подписываем клиентский сертификат нашим центром сертификации.
+    openssl x509 -req -days 10950 -in ${CERT_DIR}/client.csr -CA ${CERT_DIR}/ca.crt -CAkey ${CERT_DIR}/ca.key -set_serial 0x`openssl rand -hex 16` -sha256 -out ${CERT_DIR}/client.pem
+
+    #  Создание сертфиката в формате PKCS#12 для браузеров
+    openssl pkcs12 -export -in ${CERT_DIR}/client.pem -inkey ${CERT_DIR}/client.key -name "Sub-domain certificate for ${PRJ_DOMAIN}" -out ${CERT_DIR}/client.p12
+}
+
 
 function configure_nginx() {
     RESTRICTIONS=<<EOF
@@ -186,4 +216,5 @@ configure_openssh
 configure_hosts
 setup_users_groups
 setup_folders
+generate_cert
 configure_nginx

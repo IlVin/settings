@@ -6,6 +6,7 @@ export PRJ_NAME=${PRJ_DOMAIN}
 export PRJ_ROOT="/www/${PRJ_NAME}"
 export PRJ_OWNER="www"
 export PRJ_GROUP="www"
+export CERT_DIR="${PRJ_ROOT}/cert"
 export CONF_DIR="${PRJ_ROOT}/conf"
 export CACHE_DIR="${PRJ_ROOT}/cache"
 export PID_DIR="${PRJ_ROOT}/pid"
