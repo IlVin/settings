@@ -42,6 +42,8 @@ function setup_folders() {
 }
 
 function generate_cert() {
+    set +x
+
     # Приватный ключ центра сертификации
     openssl genrsa -out ${CERT_DIR}/ca.key 4096
 
