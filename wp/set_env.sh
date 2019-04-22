@@ -1,9 +1,11 @@
-#!/bin/bash +x
+#!/bin/bash -x
 
 # Проект
-export PRJ_DOMAIN="wp.iv77msk.ru"
+export PRJ_DOMAINS=("wp.iv77msk.ru" "www.wp.iv77msk.ru")
+export PRJ_DOMAIN=${PRJ_DOMAINS[0]}
 export PRJ_EMAIL="ilvin@mail.ru"
 export PRJ_NAME=${PRJ_DOMAIN}
+export PRJ_INT_NET="${PRJ_NAME}_int"
 export PRJ_ROOT="/www/${PRJ_NAME}"
 export PRJ_OWNER="www"
 export PRJ_GROUP="www"
@@ -24,8 +26,10 @@ export DEFAULT_PASSWD="P@ssw0rd"
 export DB_DEV_HOST="localhost"
 export DB_DEV_NAME="wp_${PRJ_NAME}_dev"
 export DB_DEV_USER=${USER}
-export DB_DEV__PASSWORD=${DEFAULT_PASSWD}
+export DB_DEV_PASSWORD=${DEFAULT_PASSWD}
 export DB_PROD_HOST="localhost"
 export DB_PROD_NAME="wp_${PRJ_NAME}_prod"
 export DB_PROD_USER=${USER}
-export DB_PROD__PASSWORD=${DEFAULT_PASSWD}
+export DB_PROD_PASSWORD=${DEFAULT_PASSWD}
+export DB_PROD_RO_USER=${USER}
+export DB_PROD_RO_PASSWORD=${DEFAULT_PASSWD}

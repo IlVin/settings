@@ -1,4 +1,4 @@
-#!/bin/bash +x
+#!/bin/bash -x
 
 . ./set_env.sh
 
@@ -42,14 +42,7 @@ function setup_folders() {
 }
 
 function generate_cert() {
-    set +x
-
     # https://www.opennet.ru/base/sec/ssl_cert.txt.html
-
-    # Приватный ключ центра сертификации
-    # openssl genrsa -out ${CERT_DIR}/${PRJ_DOMAIN}_ca.key 4096
-    # Самоподписанный сертификат
-    # openssl req -new -sha256 -x509 -key ${CERT_DIR}/ca.key -out ${CERT_DIR}/ca.crt
 
     # ЦЕНТР СЕРТИФИКАЦИИ: сертификат + приватный ключ
     openssl req -new -newkey rsa:1024 -nodes \
@@ -59,30 +52,23 @@ function generate_cert() {
         -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ CA/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
         -out ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt
 
-    # Приватный ключ web-сервера
-    # openssl genrsa -out ${CERT_DIR}/server.key 4096
-    # Сертификат для WEB-сервера
-    # openssl req -new -key ${CERT_DIR}/server.key -sha256 -out ${CERT_DIR}/server.csr
-
     # WEB-сервер: сертификат + приватный ключ
-    openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_server.key \
-        -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_server.csr
+    for DOMAIN in ${PRJ_DOMAINS[@]}
+    do
+        openssl req -new -newkey rsa:1024 -nodes \
+            -keyout ${CERT_DIR}/${DOMAIN}_server.key \
+            -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
+            -out ${CERT_DIR}/${DOMAIN}_server.csr
 
-    # Подписываем сертификат WEB-сервера нашим центром сертификации
-    openssl x509 -req -days 10950 \
-        -in ${CERT_DIR}/${PRJ_DOMAIN}_server.csr \
-        -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
-        -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
-        -set_serial 0x`openssl rand -hex 16` \
-        -sha256 \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_server.pem
-
-    # клиентский приватный ключ
-    # openssl genrsa -out ${CERT_DIR}/client.key 4096
-    # клиентский сертификат
-    # openssl req -new -key ${CERT_DIR}/client.key -sha256 -out ${CERT_DIR}/client.csr
+        # Подписываем сертификат WEB-сервера нашим центром сертификации
+        openssl x509 -req -days 10950 \
+            -in ${CERT_DIR}/${DOMAIN}_server.csr \
+            -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
+            -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+            -set_serial 0x`openssl rand -hex 16` \
+            -sha256 \
+            -out ${CERT_DIR}/${DOMAIN}_server.pem
+    done
 
     # КЛИЕНТ: сертификат + приватный ключ
     openssl req -new -newkey rsa:1024 -nodes \
@@ -107,6 +93,12 @@ function generate_cert() {
         -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
         -passout pass: \
         -out ${CERT_DIR}/${PRJ_DOMAIN}_client.p12
+}
+
+function configure_docker() {
+    sudo docker network ls | tail -n +2 | grep -P "^[0-9a-f]+\s+\Q${PRJ_INT_NET}\E" | grep -Po '^[0-9a-f]+' | xargs sudo docker network rm
+    sudo docker network create "${PRJ_INT_NET}" --internal --attachable
+    sudo docker inspect "${PRJ_INT_NET}"
 }
 
 function configure_nginx() {
@@ -264,4 +256,5 @@ configure_hosts
 setup_users_groups
 setup_folders
 generate_cert
+configure_docker
 configure_nginx
