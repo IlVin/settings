@@ -40,9 +40,9 @@ function run_nginx() {
         -v ${CONF_DIR}/nginx.conf:/etc/nginx/conf.d/${PRJ_DOMAIN}.conf:ro \
         -v ${CERT_DIR}:${CERT_DIR}:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:ro \
-        -v ${LOG_DIR}/nginx/:/var/log/nginx/:rw \
         -v ${CACHE_DIR}/nginx/:/var/cache/nginx:rw \
-        -v ${PID_DIR}/nginx.pid:/var/run/nginx.pid:rw \
+        -v ${LOG_DIR_NGINX}/:/var/log/nginx/:rw \
+        -v ${RUN_DIR_NGINX}/:/var/run/:rw \
         -h $HOSTNAME \
         --publish 80:80 \
         --publish 443:443 \
@@ -51,7 +51,7 @@ function run_nginx() {
 
 function run_unit() {
     IMAGE='nginx/unit:latest'
-    COMMAND='/bin/bash'
+#    COMMAND='/bin/bash'
 
     HOSTNAME=${PRJ_DOMAIN}
 
@@ -60,6 +60,7 @@ function run_unit() {
         --name ${CONTAINER_NAME} \
         --rm \
         -it \
+        --detach \
         -e USER=${PRJ_OWNER} \
         -e GROUP=${PRJ_GROUP} \
         -e FS_RO=1 \
@@ -71,9 +72,10 @@ function run_unit() {
         --read-only \
         -v /etc/passwd:/etc/passwd:ro \
         -v /etc/group:/etc/group:ro \
+        -v ${CERT_DIR}:/var/lib/unit/certs:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:ro \
-        -v ${LOG_DIR}/unit/:/var/log/unit/:rw \
-        -v ${PID_DIR}/unit_ro.pid:/var/run/unit_ro.pid:rw \
+        -v ${LOG_DIR_UNIT_RO}/:/var/log/unit/:rw \
+        -v ${RUN_DIR_UNIT_RO}/:/var/run/:rw \
         ${IMAGE} \
         ${COMMAND}
 
@@ -82,6 +84,7 @@ function run_unit() {
         --name ${CONTAINER_NAME} \
         --rm \
         -it \
+        --detach \
         -e USER=${PRJ_OWNER} \
         -e GROUP=${PRJ_GROUP} \
         -e FS_RO=0 \
@@ -93,9 +96,10 @@ function run_unit() {
         --read-only \
         -v /etc/passwd:/etc/passwd:ro \
         -v /etc/group:/etc/group:ro \
+        -v ${CERT_DIR}:/var/lib/unit/certs:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:rw \
-        -v ${LOG_DIR}/unit/:/var/log/unit/:rw \
-        -v ${PID_DIR}/unit_ro.pid:/var/run/unit_ro.pid:rw \
+        -v ${LOG_DIR_UNIT}/:/var/log/unit/:rw \
+        -v ${RUN_DIR_UNIT}/:/var/run/:rw \
         ${IMAGE} \
         ${COMMAND}
 }

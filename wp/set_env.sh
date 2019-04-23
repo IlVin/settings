@@ -12,12 +12,20 @@ export PRJ_GROUP="www"
 export CERT_DIR="${PRJ_ROOT}/cert"
 export CONF_DIR="${PRJ_ROOT}/conf"
 export CACHE_DIR="${PRJ_ROOT}/cache"
-export PID_DIR="${PRJ_ROOT}/pid"
 export HTDOCS_DIR="${PRJ_ROOT}/htdocs"
 export WP_DIR="${HTDOCS_DIR}"
-export LOG_DIR="${PRJ_ROOT}/logs"
 export DB_DIR="${PRJ_ROOT}/mysql"
 export SOFT_DIR="${PRJ_ROOT}/soft"
+
+export RUN_DIR="${PRJ_ROOT}/run"
+export RUN_DIR_NGINX="${RUN_DIR}/nginx"
+export RUN_DIR_UNIT="${RUN_DIR}/unit"
+export RUN_DIR_UNIT_RO="${RUN_DIR}/unit_ro"
+
+export LOG_DIR="${PRJ_ROOT}/logs"
+export LOG_DIR_NGINX="${LOG_DIR}/nginx"
+export LOG_DIR_UNIT="${LOG_DIR}/unit"
+export LOG_DIR_UNIT_RO="${LOG_DIR}/unit_ro"
 
 # Security
 export DEFAULT_PASSWD="P@ssw0rd"

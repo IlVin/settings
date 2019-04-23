@@ -35,7 +35,7 @@ function setup_users_groups() {
 }
 
 function setup_folders() {
-    for DIR in ${PRJ_ROOT} ${CONF_DIR} ${HTDOCS_DIR} ${WP_DIR} ${LOG_DIR} ${DB_DIR} ${SOFT_DIR} ${CACHE_DIR} ${PID_DIR} ${CERT_DIR}
+    for DIR in ${PRJ_ROOT} ${CONF_DIR} ${HTDOCS_DIR} ${WP_DIR} ${DB_DIR} ${SOFT_DIR} ${CACHE_DIR} ${CERT_DIR} ${RUN_DIR} ${RUN_DIR_NGINX} ${RUN_DIR_UNIT} ${RUN_DIR_UNIT_RO} ${LOG_DIR} ${LOG_DIR_NGINX} ${LOG_DIR_UNIT} ${LOG_DIR_UNIT_RO}
     do
         sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${DIR}
     done
@@ -255,6 +255,6 @@ configure_openssh
 configure_hosts
 setup_users_groups
 setup_folders
-generate_cert
+#generate_cert
 configure_docker
 configure_nginx
