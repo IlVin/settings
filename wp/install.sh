@@ -77,8 +77,8 @@ function install_docker() {
     sudo systemctl --no-pager status docker
 
     # Remove all images
-    sudo docker ps -aq | xargs sudo docker rm
-    sudo docker images -aq | xargs sudo docker rmi
+    sudo docker ps -aq | xargs -r sudo docker rm
+    sudo docker images -aq | xargs -r sudo docker rmi
 }
 
 function install_mariadb() {

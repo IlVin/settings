@@ -35,9 +35,17 @@ function setup_users_groups() {
 }
 
 function setup_folders() {
-    for DIR in ${PRJ_ROOT} ${CONF_DIR} ${HTDOCS_DIR} ${WP_DIR} ${DB_DIR} ${SOFT_DIR} ${CACHE_DIR} ${CERT_DIR} ${RUN_DIR} ${RUN_DIR_NGINX} ${RUN_DIR_UNIT} ${RUN_DIR_UNIT_RO} ${LOG_DIR} ${LOG_DIR_NGINX} ${LOG_DIR_UNIT} ${LOG_DIR_UNIT_RO}
+    for VAR in PRJ_ROOT CONF_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR RUN_DIR LOG_DIR STATE_DIR
     do
-        sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${DIR}
+        sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!VAR}
+        for SUFFIX in NGINX UNIT_ADM UNIT_PRD
+        do
+            DIR_VAR="${VAR}_${SUFFIX}"
+            if [[ ${!DIR_VAR} != '' ]]
+            then
+                sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!DIR_VAR}
+            fi
+        done
     done
 }
 
@@ -45,58 +53,59 @@ function generate_cert() {
     # https://www.opennet.ru/base/sec/ssl_cert.txt.html
 
     # ЦЕНТР СЕРТИФИКАЦИИ: сертификат + приватный ключ
-    openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt ]] || openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
         -x509 \
         -days 10000 \
         -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ CA/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt
+        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt
 
     # WEB-сервер: сертификат + приватный ключ
     for DOMAIN in ${PRJ_DOMAINS[@]}
     do
-        openssl req -new -newkey rsa:1024 -nodes \
-            -keyout ${CERT_DIR}/${DOMAIN}_server.key \
+        [[ -f ${CERT_DIR_NGINX}/${DOMAIN}_server.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
+            -keyout ${CERT_DIR_NGINX}/${DOMAIN}_server.key \
             -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-            -out ${CERT_DIR}/${DOMAIN}_server.csr
+            -out ${CERT_DIR_NGINX}/${DOMAIN}_server.csr
 
         # Подписываем сертификат WEB-сервера нашим центром сертификации
-        openssl x509 -req -days 10950 \
-            -in ${CERT_DIR}/${DOMAIN}_server.csr \
-            -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
-            -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+        [[ -f ${CERT_DIR_NGINX}/${DOMAIN}_server.pem ]] || openssl x509 -req -days 10950 \
+            -in ${CERT_DIR_NGINX}/${DOMAIN}_server.csr \
+            -CA ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt \
+            -CAkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
             -set_serial 0x`openssl rand -hex 16` \
             -sha256 \
-            -out ${CERT_DIR}/${DOMAIN}_server.pem
+            -out ${CERT_DIR_NGINX}/${DOMAIN}_server.pem
     done
 
     # КЛИЕНТ: сертификат + приватный ключ
-    openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
+    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.key \
         -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.csr
+        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.csr
 
     # Подписываем клиентский сертификат нашим центром сертификации.
     # openssl ca -config ca.config -in client01.csr -out client01.crt -batch
-    openssl x509 -req -days 10950 \
-        -in ${CERT_DIR}/${PRJ_DOMAIN}_client.csr \
-        -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
-        -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem ]] || openssl x509 -req -days 10950 \
+        -in ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.csr \
+        -CA ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt \
+        -CAkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
         -set_serial 0x`openssl rand -hex 16` \
         -sha256 \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.pem
+        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem
 
     #  Создание сертфиката в формате PKCS#12 для браузеров
     openssl pkcs12 -export \
-        -in ${CERT_DIR}/${PRJ_DOMAIN}_client.pem \
-        -inkey ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
+        -in ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem \
+        -inkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.key \
         -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
         -passout pass: \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.p12
+        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.p12
 }
 
 function configure_docker() {
-    sudo docker network ls | tail -n +2 | grep -P "^[0-9a-f]+\s+\Q${PRJ_INT_NET}\E" | grep -Po '^[0-9a-f]+' | xargs sudo docker network rm
+    sudo docker network inspect "${PRJ_INT_NET}" | jq '.[].Containers | keys' | grep -Po '"[^"]+"' | grep -Po '[^"]+' | xargs -r sudo docker container stop
+    sudo docker network ls | tail -n +2 | grep -P "^[0-9a-f]+\s+\Q${PRJ_INT_NET}\E" | grep -Po '^[0-9a-f]+' | xargs -r sudo docker network rm
     sudo docker network create "${PRJ_INT_NET}" --internal --attachable
     sudo docker inspect "${PRJ_INT_NET}"
 }
@@ -150,10 +159,10 @@ function configure_nginx() {
 EOF
 
     cat << EOF | sudo tee ${CONF_DIR}/nginx.conf > /dev/null
-        ssl_certificate     ${CERT_DIR}/${PRJ_DOMAIN}_server.pem;
-        ssl_certificate_key ${CERT_DIR}/${PRJ_DOMAIN}_server.key;
-        ssl_trusted_certificate ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt;
-        ssl_client_certificate ${CERT_DIR}/${PRJ_DOMAIN}_client.pem;
+        ssl_certificate     ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem;
+        ssl_certificate_key ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key;
+        ssl_trusted_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
+        ssl_client_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem;
         ssl_stapling on;
         ssl_verify_client optional;
 
@@ -255,6 +264,6 @@ configure_openssh
 configure_hosts
 setup_users_groups
 setup_folders
-#generate_cert
+generate_cert
 configure_docker
 configure_nginx

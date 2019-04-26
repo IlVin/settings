@@ -9,7 +9,6 @@ export PRJ_INT_NET="${PRJ_NAME}_int"
 export PRJ_ROOT="/www/${PRJ_NAME}"
 export PRJ_OWNER="www"
 export PRJ_GROUP="www"
-export CERT_DIR="${PRJ_ROOT}/cert"
 export CONF_DIR="${PRJ_ROOT}/conf"
 export CACHE_DIR="${PRJ_ROOT}/cache"
 export HTDOCS_DIR="${PRJ_ROOT}/htdocs"
@@ -19,13 +18,24 @@ export SOFT_DIR="${PRJ_ROOT}/soft"
 
 export RUN_DIR="${PRJ_ROOT}/run"
 export RUN_DIR_NGINX="${RUN_DIR}/nginx"
-export RUN_DIR_UNIT="${RUN_DIR}/unit"
-export RUN_DIR_UNIT_RO="${RUN_DIR}/unit_ro"
+export RUN_DIR_UNIT_ADM="${RUN_DIR}/unit_adm"
+export RUN_DIR_UNIT_PRD="${RUN_DIR}/unit_prd"
 
 export LOG_DIR="${PRJ_ROOT}/logs"
 export LOG_DIR_NGINX="${LOG_DIR}/nginx"
-export LOG_DIR_UNIT="${LOG_DIR}/unit"
-export LOG_DIR_UNIT_RO="${LOG_DIR}/unit_ro"
+export LOG_DIR_UNIT_ADM="${LOG_DIR}/unit_adm"
+export LOG_DIR_UNIT_PRD="${LOG_DIR}/unit_prd"
+
+export STATE_DIR="${PRJ_ROOT}/state"
+export STATE_DIR_UNIT_ADM="${STATE_DIR}/unit_adm"
+export STATE_DIR_UNIT_PRD="${STATE_DIR}/unit_prd"
+
+export CERT_DIR="${PRJ_ROOT}/cert"
+export CERT_DIR_NGINX="${CERT_DIR}/nginx"
+export CERT_DIR_UNIT_ADM="${STATE_DIR_UNIT_ADM}/certs"
+export CERT_DIR_UNIT_PRD="${STATE_DIR_UNIT_PRD}/certs"
+
+xport LOG_DIR_UNIT_PRD="${LOG_DIR}/unit_prd"
 
 # Security
 export DEFAULT_PASSWD="P@ssw0rd"

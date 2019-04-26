@@ -51,11 +51,12 @@ function run_nginx() {
 
 function run_unit() {
     IMAGE='nginx/unit:latest'
-#    COMMAND='/bin/bash'
+    #COMMAND='/bin/bash'
 
     HOSTNAME=${PRJ_DOMAIN}
 
-    CONTAINER_NAME="${PRJ_NAME}_unit_ro"
+    CONTAINER_NAME="${PRJ_NAME}_unit_prd"
+    sudo docker container ls -f NAME=${CONTAINER_NAME} -q | xargs -r sudo docker container stop
     sudo docker run \
         --name ${CONTAINER_NAME} \
         --rm \
@@ -72,14 +73,15 @@ function run_unit() {
         --read-only \
         -v /etc/passwd:/etc/passwd:ro \
         -v /etc/group:/etc/group:ro \
-        -v ${CERT_DIR}:/var/lib/unit/certs:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:ro \
-        -v ${LOG_DIR_UNIT_RO}/:/var/log/unit/:rw \
-        -v ${RUN_DIR_UNIT_RO}/:/var/run/:rw \
+        -v ${STATE_DIR_UNIT_PRD}:/var/lib/unit/:rw \
+        -v ${LOG_DIR_UNIT_PRD}/:/var/log/:rw \
+        -v ${RUN_DIR_UNIT_PRD}/:/var/run/:rw \
         ${IMAGE} \
         ${COMMAND}
 
-    CONTAINER_NAME="${PRJ_NAME}_unit"
+    CONTAINER_NAME="${PRJ_NAME}_unit_adm"
+    sudo docker container ls -f NAME=${CONTAINER_NAME} -q | xargs -r sudo docker container stop
     sudo docker run \
         --name ${CONTAINER_NAME} \
         --rm \
@@ -96,10 +98,10 @@ function run_unit() {
         --read-only \
         -v /etc/passwd:/etc/passwd:ro \
         -v /etc/group:/etc/group:ro \
-        -v ${CERT_DIR}:/var/lib/unit/certs:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:rw \
-        -v ${LOG_DIR_UNIT}/:/var/log/unit/:rw \
-        -v ${RUN_DIR_UNIT}/:/var/run/:rw \
+        -v ${STATE_DIR_UNIT_ADM}:/var/lib/unit/:rw \
+        -v ${LOG_DIR_UNIT_ADM}/:/var/log/:rw \
+        -v ${RUN_DIR_UNIT_ADM}/:/var/run/:rw \
         ${IMAGE} \
         ${COMMAND}
 }
