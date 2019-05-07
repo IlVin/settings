@@ -32,13 +32,32 @@ function setup_users_groups() {
             sudo usermod -a -G ${grp} ${owner}
         done
     done
+
+    for grp in ${GROUP_PRD}
+    do
+        if [ `getent group ${grp}` ]
+        then
+            echo "Group ${grp} exists"
+        else
+            sudo groupadd ${grp}
+        fi
+        for user in ${USER_PRD}
+        do
+            if [[ $(id -u ${user} 2>/dev/null) > 0 ]]
+            then
+                echo "User ${user} exists"
+            else
+                sudo useradd -d /dev/null -s /sbin/nologin -g ${grp} ${user}
+            fi
+        done
+    done
 }
 
 function setup_folders() {
-    for VAR in PRJ_ROOT CONF_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR RUN_DIR LOG_DIR STATE_DIR
+    for VAR in PRJ_ROOT CONF_DIR IMG_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR RUN_DIR LOG_DIR STATE_DIR
     do
         sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!VAR}
-        for SUFFIX in NGINX UNIT_ADM UNIT_PRD
+        for SUFFIX in NGINX UNIT_ADM UNIT_PRD BASE FPM FPM_ADM FPM_PRD
         do
             DIR_VAR="${VAR}_${SUFFIX}"
             if [[ ${!DIR_VAR} != '' ]]
@@ -103,11 +122,263 @@ function generate_cert() {
         -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.p12
 }
 
-function configure_docker() {
-    sudo docker network inspect "${PRJ_INT_NET}" | jq '.[].Containers | keys' | grep -Po '"[^"]+"' | grep -Po '[^"]+' | xargs -r sudo docker container stop
-    sudo docker network ls | tail -n +2 | grep -P "^[0-9a-f]+\s+\Q${PRJ_INT_NET}\E" | grep -Po '^[0-9a-f]+' | xargs -r sudo docker network rm
-    sudo docker network create "${PRJ_INT_NET}" --internal --attachable
-    sudo docker inspect "${PRJ_INT_NET}"
+function build_base_image() {
+    IMAGE_DIR=${IMG_DIR_BASE}
+    cat << EOF > ${IMAGE_DIR}/install.sh
+#!/bin/bash -x
+    LSB=\$(lsb_release -s -c)
+
+    export DEBIAN_FRONTEND="noninteractive"
+
+    apt-get update -yqq
+
+    apt-get install -yqq \
+        ca-certificates \
+        apt-utils \
+        software-properties-common \
+        apt-transport-https \
+
+    add-apt-repository universe
+
+    # Add nginx repository
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ABF5BD827BD9BF62
+    sudo add-apt-repository "deb http://nginx.org/packages/ubuntu/ \${LSB} nginx"
+
+    sudo apt purge -yqq nginx.*
+
+    apt-get install -yqq --no-install-recommends --no-install-suggests \
+        bash \
+        sudo \
+        dialog \
+        tzdata \
+        locales \
+        lsb-core \
+        gnupg1 \
+        gnupg2 \
+        curl \
+        dnsutils \
+        net-tools \
+        vim \
+        nginx \
+        php${PHPVER} \
+        php${PHPVER}-fpm \
+        php${PHPVER}-zip \
+        php${PHPVER}-opcache \
+        php${PHPVER}-mysql \
+        php${PHPVER}-gd \
+        php${PHPVER}-json \
+        php${PHPVER}-xml \
+        php${PHPVER}-xsl \
+        php${PHPVER}-xmlrpc \
+        php${PHPVER}-curl \
+
+    apt-get dist-upgrade -yqq --allow-downgrades
+    apt-get autoremove -yqq
+    apt-get autoclean -yqq
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+    # Setup locales
+    for LOC in ru_RU en_US
+    do
+        locale-gen \${LOC}.UTF-8
+    done
+    localedef ru_RU.UTF-8 -i ru_RU -f UTF-8;
+
+    # Timezone setup
+    ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+    dpkg-reconfigure --frontend noninteractive tzdata
+
+    ldconfig
+EOF
+    chmod a+x ${IMAGE_DIR}/install.sh
+
+cat << EOF > ${IMAGE_DIR}/Dockerfile
+    #FROM debian:stretch-slim
+    FROM ubuntu:latest
+    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
+    ADD ./ /container
+    ENV DEBIAN_FRONTEND noninteractive
+    RUN /container/install.sh
+EOF
+
+    RETPATH=$(pwd)
+    cd ${IMAGE_DIR} && sudo docker build -t ${IMG_NAME_BASE} ./
+    cd ${RETPATH}
+    sudo docker image ls
+}
+
+function build_image_nginx() {
+    IMAGE_DIR=${IMG_DIR_NGINX}
+    cat << EOF > ${IMAGE_DIR}/install.sh
+#!/bin/bash -x
+
+EOF
+    chmod a+x ${IMAGE_DIR}/install.sh
+
+cat << EOF > ${IMAGE_DIR}/Dockerfile
+    FROM ${IMG_NAME_BASE}
+    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
+    ADD ./ /container
+    RUN /container/install.sh
+EOF
+
+    RETPATH=$(pwd)
+    cd ${IMAGE_DIR} && sudo docker build -t ${IMG_NAME_NGINX} ./
+    cd ${RETPATH}
+    sudo docker image ls
+}
+
+
+
+# https://habr.com/ru/post/316802/
+function build_image_fpm_adm() {
+    cat << EOF > ${IMG_DIR_FPM_ADM}/install.sh
+#!/bin/bash -x
+
+    sudo sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/${PHPVER}/fpm/php-fpm.conf
+
+    sudo sed -i -e "s/listen\s*=.*/listen = 9000/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i "s|;\s*log_errors|log_errors On|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i -e "s/;chdir\s*=\s*\/var\/www/chdir = $(escaped_htdocs_dir)/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/user\s*=\s*nobody/user = ${USER_ADM}/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/group\s*=\s*nobody/group = ${GROUP_ADM}/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/;clear_env\s*=\s*no/clear_env = no/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+
+    sudo sed -i "s/display_errors\s*=\s*(On|Off)/display_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/display_startup_errors\s*=\s*(On|Off)/display_startup_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/log_errors\s*=\s*(On|Off)/log_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|doc_root\s*=.*|doc_root = ${HTDOCS_DIR}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/user_dir\s*=.*/user_dir =/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/allow_url_fopen\s*=\s*(On|Off)/allow_url_fopen = Off/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/allow_url_include\s*=\s*(On|Off)/allow_url_include = Off/" /etc/php/${PHPVER}/fpm/php.ini
+
+
+    sudo sed -i "s|;date.timezone =.*|date.timezone = ${TIMEZONE}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|memory_limit =.*|memory_limit = ${PHP_MEMORY_LIMIT}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|upload_max_filesize =.*|upload_max_filesize = ${MAX_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|max_file_uploads =.*|max_file_uploads = ${PHP_MAX_FILE_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|post_max_size =.*|post_max_size = ${PHP_MAX_POST}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" /etc/php/${PHPVER}/fpm/php.ini
+
+EOF
+    chmod a+x ${IMG_DIR_FPM_ADM}/install.sh
+
+cat << EOF > ${IMG_DIR_FPM_ADM}/Dockerfile
+    FROM ${IMG_NAME_BASE}
+    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
+    ADD ./ /container
+    ENV DEBIAN_FRONTEND noninteractive
+    RUN /container/install.sh
+    EXPOSE 9000
+    CMD ["php-fpm${PHPVER}"]
+EOF
+
+    RETPATH=$(pwd)
+    cd ${IMG_DIR_FPM_ADM} && sudo docker build -t ${IMG_NAME_FPM_ADM} ./
+    cd ${RETPATH}
+    sudo docker image ls
+}
+
+function build_image_fpm_prd() {
+    cat << EOF > ${IMG_DIR_FPM_PRD}/install.sh
+#!/bin/bash -x
+
+    sudo sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/${PHPVER}/fpm/php-fpm.conf
+
+    sudo sed -i -e "s/listen\s*=.*/listen = 9000/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/;chdir\s*=\s*\/var\/www/chdir = $(escaped_htdocs_dir)/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/user\s*=\s*nobody/user = ${USER_PRD}/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/group\s*=\s*nobody/group = ${GROUP_PRD}/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/;clear_env\s*=\s*no/clear_env = no/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+    sudo sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
+
+    sudo sed -i "s/display_errors\s*=\s*(On|Off)/display_errors = Off/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/display_startup_errors\s*=\s*(On|Off)/display_startup_errors = Off/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/log_errors\s*=\s*(On|Off)/log_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|;date.timezone =.*|date.timezone = ${TIMEZONE}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|memory_limit =.*|memory_limit = ${PHP_MEMORY_LIMIT}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|upload_max_filesize =.*|upload_max_filesize = ${MAX_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|max_file_uploads =.*|max_file_uploads = ${PHP_MAX_FILE_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|post_max_size =.*|post_max_size = ${PHP_MAX_POST}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" /etc/php/${PHPVER}/fpm/php.ini
+
+EOF
+    chmod a+x ${IMG_DIR_FPM_PRD}/install.sh
+
+cat << EOF > ${IMG_DIR_FPM_PRD}/Dockerfile
+    FROM ${IMG_NAME_BASE}
+    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
+    ADD ./ /container
+    ENV DEBIAN_FRONTEND noninteractive
+    RUN /container/install.sh
+    EXPOSE 9000
+    CMD ["php-fpm${PHPVER}"]
+EOF
+
+    RETPATH=$(pwd)
+    cd ${IMG_DIR_FPM_PRD} && sudo docker build -t ${IMG_NAME_FPM_PRD} ./
+    cd ${RETPATH}
+    sudo docker image ls
+}
+
+function configure_docker_nets() {
+    for NET_ID in $(net_adm_ids) $(net_prd_ids)
+    do
+        sudo docker network inspect ${NET_ID} | jq '.[].Containers | keys' | grep -Po '"[^"]+"' | grep -Po '[^"]+' | xargs -r sudo docker container stop
+        sudo docker network rm ${NET_ID}
+    done
+    sudo docker network create "${NET_ADM}" --internal --attachable
+    sudo docker network create "${NET_PRD}" --internal --attachable
+}
+
+function configure_unit() {
+    cat << EOF | jq . | tee ${CONF_UNIT_ADM} > /dev/null
+    {
+        "listeners": {
+            "*:${PORT_UNIT_ADM}": {
+                "application": "WP_INDEX_ADM"
+             }
+        },
+
+        "applications": {
+            "WP_INDEX_ADM": {
+                "type": "php",
+                "processes": {
+                    "max": 20,
+                    "spare": 5
+                },
+                "user": "${PRJ_OWNER}",
+                "group": "${PRJ_GROUP}",
+                "root": "${HTDOCS_DIR}",
+                "script": "index.php"
+            }
+        }
+    }
+EOF
+    cat << EOF | jq . | tee ${CONF_UNIT_PRD} > /dev/null
+    {
+        "listeners": {
+            "*:${PORT_UNIT_PRD}": {
+                "application": "WP_INDEX_PRD"
+             }
+        },
+
+        "applications": {
+            "WP_INDEX_PRD": {
+                "type": "php",
+                "processes": {
+                    "max": 20,
+                    "spare": 5
+                },
+                "user": "${PRJ_OWNER}",
+                "group": "${PRJ_GROUP}",
+                "root": "${HTDOCS_DIR}",
+                "script": "index.php"
+            }
+        }
+    }
+EOF
 }
 
 function configure_nginx() {
@@ -158,49 +429,122 @@ function configure_nginx() {
         }
 EOF
 
-    cat << EOF | sudo tee ${CONF_DIR}/nginx.conf > /dev/null
-        ssl_certificate     ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem;
-        ssl_certificate_key ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key;
-        ssl_trusted_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
-        ssl_client_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem;
-        ssl_stapling on;
-        ssl_verify_client optional;
+    cat << EOF | tee ${CONF_NGINX} > /dev/null
+        events {
+            worker_connections 768;
+            # multi_accept on;
+        }
 
-        server {
-            listen 80 default_server;
-            listen [::]:80 default_server;
-            listen 443 ssl default_server;
-            listen [::]:443 ssl default_server;
-            server_name ${PRJ_DOMAIN};
+        http {
+            sendfile on;
+            tcp_nopush on;
+            tcp_nodelay on;
+            keepalive_timeout 65;
+            types_hash_max_size 2048;
+            # server_tokens off;
 
-            root ${HTDOCS_DIR};
-            index index.php;
+            # server_names_hash_bucket_size 64;
+            # server_name_in_redirect off;
 
-            location / {
-                try_files \$uri \$uri/ /index.php?\$args ;
+            include /etc/nginx/mime.types;
+            default_type application/octet-stream;
+
+            ## SSL Settings
+            ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
+            ssl_prefer_server_ciphers on;
+
+            ssl_certificate     ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem;
+            ssl_certificate_key ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key;
+            ssl_trusted_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
+            ssl_client_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem;
+            ssl_stapling on;
+            ssl_verify_client optional;
+
+            ## Logging Settings
+            access_log /var/log/nginx/access.log;
+            error_log /var/log/nginx/error.log;
+
+            ## Gzip Settings
+            # gzip on;
+
+            # gzip_vary on;
+            # gzip_proxied any;
+            # gzip_comp_level 6;
+            # gzip_buffers 16 8k;
+            # gzip_http_version 1.1;
+            # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+            upstream wp_adm_upstream {
+                server ${HOSTNAME_UNIT_ADM}:${PORT_UNIT_ADM};
             }
 
-            location ~* \\.php$ {
-                        #NOTE: You should have "cgi.fix_pathinfo = 0;" in php.ini
-                try_files \$uri =404;
-                include fastcgi_params;
-                fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
-                fastcgi_index index.php;
-                fastcgi_pass unix:/run/php/php7.2-fpm.sock;
-                fastcgi_param  DB_NAME "${DB_PROD_NAME}";
-                fastcgi_param  DB_USER "${DB_PROD_USER}";
-                fastcgi_param  DB_PASSWORD "${DB_PROD_PASSWORD}";
-                fastcgi_param  DB_HOST "${DB_PROD_HOST}";
-                #gzip on;
-                #gzip_comp_level 4;
-                #gzip_proxied any;
+            upstream wp_prd_upstream {
+                server ${HOSTNAME_UNIT_PRD}:${PORT_UNIT_PRD};
             }
 
-            location ~* \\.(js|css|png|jpg|jpeg|gif|ico)$ {
-                expires max;
-                log_not_found off;
-            }
+            server {
+                listen 80 default_server;
+                listen [::]:80 default_server;
+                listen 443 ssl default_server;
+                listen [::]:443 ssl default_server;
+                server_name ${PRJ_DOMAIN};
 
+                root ${HTDOCS_DIR};
+                index index.php;
+
+                location @index_php_adm {
+                    proxy_pass http://wp_adm_upstream;
+
+                    proxy_set_header  Host \$host;
+
+                    try_files \$uri =404;
+
+                    proxy_set_header  DB_HOST "${DB_HOST_ADM}";
+                    proxy_set_header  DB_PORT "${DB_PORT_ADM}";
+                    proxy_set_header  DB_NAME "${DB_NAME_ADM}";
+                    proxy_set_header  DB_USER "${DB_USER_ADM}";
+                    proxy_set_header  DB_PASSWORD "${DB_PASSWORD_ADM}";
+
+                    #fastcgi_pass unix:/run/php/php7.2-fpm.sock;
+                    #include fastcgi_params;
+                    #fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
+                    #fastcgi_index index.php;
+                    #gzip on;
+                    #gzip_comp_level 4;
+                    #gzip_proxied any;
+                }
+
+                location @index_php_prd {
+                    proxy_pass http://wp_prd_upstream;
+
+                    proxy_set_header  Host \$host;
+
+                    try_files \$uri =404;
+
+                    proxy_set_header  DB_HOST "${DB_HOST_PRD}";
+                    proxy_set_header  DB_PORT "${DB_PORT_PRD}";
+                    proxy_set_header  DB_NAME "${DB_NAME_PRD}";
+                    proxy_set_header  DB_USER "${DB_USER_PRD}";
+                    proxy_set_header  DB_PASSWORD "${DB_PASSWORD_PRD}";
+
+                    #fastcgi_pass unix:/run/php/php7.2-fpm.sock;
+                    #include fastcgi_params;
+                    #fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
+                    #fastcgi_index index.php;
+                    #gzip on;
+                    #gzip_comp_level 4;
+                    #gzip_proxied any;
+                }
+
+                location / {
+                    try_files \$uri \$uri/ @index_php_adm;
+                }
+
+                location ~* \\.(js|css|png|jpg|jpeg|gif|ico)$ {
+                    expires max;
+                    log_not_found off;
+                }
+            }
         }
 EOF
 }
@@ -265,5 +609,10 @@ configure_hosts
 setup_users_groups
 setup_folders
 generate_cert
-configure_docker
-configure_nginx
+build_base_image
+build_image_nginx
+build_image_fpm_adm
+build_image_fpm_prd
+#configure_docker_nets
+#configure_nginx
+#configure_unit

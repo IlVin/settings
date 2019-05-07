@@ -21,56 +21,149 @@ function run_container() {
 #        --dns 2a02:6b8:0:3400::1023 \
 }
 
+function stop_nginx() {
+    for CONTAINER_ID in $(nginx_ids)
+    do
+        for NET_ID in $(net_bridge_ids) $(net_adm_ids) $(net_prd_ids)
+        do
+            if [[ $(sudo  docker network inspect ${NET_ID} | jq '.[] | .Containers | keys | .[]' | grep -o '"${CONTAINER_ID}') != '' ]]
+            then
+                sudo docker network disconnect ${NET_ID} ${CONTAINER_ID}
+            fi
+        done
+        sudo docker container stop ${CONTAINER_ID}
+        sudo docker container rm ${CONTAINER_ID}
+    done
+}
+
+function stop_fpm_adm() {
+    for CONTAINER_ID in $(fpm_adm_ids)
+    do
+        for NET_ID in $(net_bridge_ids) $(net_adm_ids) $(net_prd_ids)
+        do
+            if [[ $(sudo  docker network inspect ${NET_ID} | jq '.[] | .Containers | keys | .[]' | grep -o '"${CONTAINER_ID}') != '' ]]
+            then
+                sudo docker network disconnect ${NET_ID} ${CONTAINER_ID}
+            fi
+        done
+        sudo docker container stop ${CONTAINER_ID}
+        sudo docker container rm ${CONTAINER_ID}
+    done
+}
+
+function stop_fpm_prd() {
+    for CONTAINER_ID in $(fpm_prd_ids)
+    do
+        for NET_ID in $(net_bridge_ids) $(net_adm_ids) $(net_prd_ids)
+        do
+            if [[ $(sudo  docker network inspect ${NET_ID} | jq '.[] | .Containers | keys | .[]' | grep -o '"${CONTAINER_ID}') != '' ]]
+            then
+                sudo docker network disconnect ${NET_ID} ${CONTAINER_ID}
+            fi
+        done
+        sudo docker container stop ${CONTAINER_ID}
+        sudo docker container rm ${CONTAINER_ID}
+    done
+}
+
+
 function run_nginx() {
     IMAGE="nginx:latest"
-    HOSTNAME=${PRJ_DOMAIN}
-    CONTAINER_NAME="${PRJ_NAME}_nginx"
+    COMMAND='/bin/bash'
 
-    sudo docker kill ${CONTAINER_NAME}
+    stop_nginx
 
-    sudo docker run \
-        --name ${CONTAINER_NAME} \
+    CONTAINER_ID=$(sudo docker create \
+        --name ${HOSTNAME_NGINX} \
         --rm \
         -it \
-        --detach \
-        --network="bridge" \
-        --read-only \
+        --network=bridge \
         -e USER=${PRJ_OWNER} \
         -e GROUP=${PRJ_GROUP} \
-        -v ${CONF_DIR}/nginx.conf:/etc/nginx/conf.d/${PRJ_DOMAIN}.conf:ro \
+        -v ${CONF_NGINX}:/etc/nginx/nginx.conf:ro \
         -v ${CERT_DIR}:${CERT_DIR}:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:ro \
         -v ${CACHE_DIR}/nginx/:/var/cache/nginx:rw \
         -v ${LOG_DIR_NGINX}/:/var/log/nginx/:rw \
         -v ${RUN_DIR_NGINX}/:/var/run/:rw \
-        -h $HOSTNAME \
+        --hostname ${HOSTNAME_NGINX} \
         --publish 80:80 \
         --publish 443:443 \
-        ${IMAGE}
+        ${IMAGE} \
+        ${COMMAND}
+        #--read-only \
+        #--network="${NET_PRD}" \
+        #--network-alias ${HOSTNAME_NGINX} \
+        #--link ${HOSTNAME_UNIT_ADM}:${HOSTNAME_UNIT_ADM} \
+        #--detach 
+    )
+
+    for NET_ID in $(net_adm_ids) $(net_prd_ids)
+    do
+        sudo docker network connect ${NET_ID} ${CONTAINER_ID}
+    done
+    sudo docker start ${CONTAINER_ID}
 }
 
-function run_unit() {
+function run_fpm_adm() {
+    COMMAND='/bin/bash'
+
+    stop_fpm_adm
+
+    CONTAINER_ID=$(
+        sudo docker create \
+        --name ${HOSTNAME_FPM_ADM} \
+        --rm \
+        -it \
+        -e USER=${USER_ADM} \
+        -e GROUP=${GROUP_ADM} \
+        -e FS_RO=0 \
+        -e OFFLINE=0 \
+        -e DB_RO=0 \
+        --hostname ${HOSTNAME_FPM_ADM} \
+        --network=bridge \
+        --user=$(id -u ${USER_ADM}):$(id -g ${GROUP_ADM}) \
+        -v /etc/passwd:/etc/passwd:ro \
+        -v /etc/group:/etc/group:ro \
+        -v ${HTDOCS_DIR}:${HTDOCS_DIR}:rw \
+        -v ${LOG_DIR_FPM_ADM}/:/var/log/:rw \
+        -v ${RUN_DIR_FPM_ADM}/:/run/php/:rw \
+        ${IMG_NAME_FPM_ADM} \
+        ${COMMAND}
+    )
+
+    for NET_ID in $(net_adm_ids)
+    do
+        sudo docker network connect ${NET_ID} ${CONTAINER_ID}
+    done
+    sudo docker start ${CONTAINER_ID}
+    if [[ ${COMMAND} ]]
+    then
+        sudo docker attach ${CONTAINER_ID}
+    fi
+
+}
+
+function run_fpm_prd() {
     IMAGE='nginx/unit:latest'
     #COMMAND='/bin/bash'
 
-    HOSTNAME=${PRJ_DOMAIN}
+    stop_unit
 
-    CONTAINER_NAME="${PRJ_NAME}_unit_prd"
-    sudo docker container ls -f NAME=${CONTAINER_NAME} -q | xargs -r sudo docker container stop
+    sudo rm -rf ${RUN_DIR_UNIT_PRD}/*
     sudo docker run \
-        --name ${CONTAINER_NAME} \
+        --name ${HOSTNAME_UNIT_PRD} \
         --rm \
         -it \
-        --detach \
         -e USER=${PRJ_OWNER} \
         -e GROUP=${PRJ_GROUP} \
         -e FS_RO=1 \
         -e OFFLINE=1 \
         -e DB_RO=1 \
-        -h $HOSTNAME \
-        --network="${PRJ_INT_NET}" \
+        --hostname ${HOSTNAME_UNIT_PRD} \
+        --network=${NET_PRD} \
         --user=$(id -u ${PRJ_OWNER}):$(id -g ${PRJ_GROUP}) \
-        --read-only \
+        --detach \
         -v /etc/passwd:/etc/passwd:ro \
         -v /etc/group:/etc/group:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:ro \
@@ -80,30 +173,40 @@ function run_unit() {
         ${IMAGE} \
         ${COMMAND}
 
-    CONTAINER_NAME="${PRJ_NAME}_unit_adm"
-    sudo docker container ls -f NAME=${CONTAINER_NAME} -q | xargs -r sudo docker container stop
-    sudo docker run \
-        --name ${CONTAINER_NAME} \
+    sudo curl -X PUT --data-binary @${CONF_UNIT_PRD} --unix-socket ${RUN_DIR_UNIT_PRD}/control.unit.sock 'http://localhost/config'
+    sudo curl -X GET --unix-socket ${RUN_DIR_UNIT_PRD}/control.unit.sock 'http://localhost/config'
+
+    sudo rm -rf ${RUN_DIR_UNIT_ADM}/*
+    CONTAINER_ID=$(
+        sudo docker create \
+        --name ${HOSTNAME_UNIT_ADM} \
         --rm \
         -it \
-        --detach \
         -e USER=${PRJ_OWNER} \
         -e GROUP=${PRJ_GROUP} \
         -e FS_RO=0 \
         -e OFFLINE=0 \
         -e DB_RO=0 \
-        -h $HOSTNAME \
-        --network="bridge" \
+        --hostname ${HOSTNAME_UNIT_ADM} \
+        --network=bridge \
         --user=$(id -u ${PRJ_OWNER}):$(id -g ${PRJ_GROUP}) \
-        --read-only \
         -v /etc/passwd:/etc/passwd:ro \
         -v /etc/group:/etc/group:ro \
         -v ${HTDOCS_DIR}:${HTDOCS_DIR}:rw \
         -v ${STATE_DIR_UNIT_ADM}:/var/lib/unit/:rw \
         -v ${LOG_DIR_UNIT_ADM}/:/var/log/:rw \
         -v ${RUN_DIR_UNIT_ADM}/:/var/run/:rw \
-        ${IMAGE} \
-        ${COMMAND}
+        ${IMAGE}
+    )
+
+    for NET_ID in $(net_adm_ids)
+    do
+        sudo docker network connect ${NET_ID} ${CONTAINER_ID}
+    done
+    sudo docker start ${CONTAINER_ID}
+
+    sudo curl -X PUT --data-binary @${CONF_UNIT_ADM} --unix-socket ${RUN_DIR_UNIT_ADM}/control.unit.sock 'http://localhost/config'
+    sudo curl -X GET --unix-socket ${RUN_DIR_UNIT_ADM}/control.unit.sock 'http://localhost/config'
 }
 
 
@@ -115,7 +218,7 @@ while (( $# ))
 do
     case "${1,,}" in
         nginx) run_nginx;;
-        unit) run_unit;;
+        fpm) run_fpm_adm;;
         *) show_help;;
     esac
     shift
