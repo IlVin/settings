@@ -99,12 +99,120 @@ EOF
     sudo docker image ls
 }
 
+function build_base_image() {
+    IMAGE_DIR=${IMG_DIR_BASE}
+    cat << EOF > ${IMAGE_DIR}/install.sh
+#!/bin/bash -x
+    LSB=\$(lsb_release -s -c)
+
+    export DEBIAN_FRONTEND="noninteractive"
+
+    apt-get update -yqq
+
+    apt-get install -yqq \
+        ca-certificates \
+        apt-utils \
+        software-properties-common \
+        apt-transport-https \
+
+    add-apt-repository universe
+
+    # Add nginx repository
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ABF5BD827BD9BF62
+    sudo add-apt-repository "deb http://nginx.org/packages/ubuntu/ \${LSB} nginx"
+
+    sudo apt purge -yqq nginx.*
+
+    apt-get install -yqq --no-install-recommends --no-install-suggests \
+        bash \
+        sudo \
+        dialog \
+        tzdata \
+        locales \
+        lsb-core \
+        gnupg1 \
+        gnupg2 \
+        curl \
+        dnsutils \
+        net-tools \
+        vim \
+        nginx \
+        php${PHPVER} \
+        php${PHPVER}-fpm \
+        php${PHPVER}-zip \
+        php${PHPVER}-opcache \
+        php${PHPVER}-mysql \
+        php${PHPVER}-gd \
+        php${PHPVER}-json \
+        php${PHPVER}-xml \
+        php${PHPVER}-xsl \
+        php${PHPVER}-xmlrpc \
+        php${PHPVER}-curl \
+
+    apt-get dist-upgrade -yqq --allow-downgrades
+    apt-get autoremove -yqq
+    apt-get autoclean -yqq
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+    # Setup locales
+    for LOC in ru_RU en_US
+    do
+        locale-gen \${LOC}.UTF-8
+    done
+    localedef ru_RU.UTF-8 -i ru_RU -f UTF-8;
+
+    # Timezone setup
+    ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+    dpkg-reconfigure --frontend noninteractive tzdata
+
+    ldconfig
+EOF
+    chmod a+x ${IMAGE_DIR}/install.sh
+
+cat << EOF > ${IMAGE_DIR}/Dockerfile
+    #FROM debian:stretch-slim
+    FROM ubuntu:latest
+    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
+    ADD ./ /container
+    ENV DEBIAN_FRONTEND noninteractive
+    RUN /container/install.sh
+EOF
+
+    RETPATH=$(pwd)
+    cd ${IMAGE_DIR} && sudo docker build -t ${IMG_NAME_BASE} ./
+    cd ${RETPATH}
+    sudo docker image ls
+}
+
 
 function install_yii() {
     # Yii
     cd ~ && curl -sS https://getcomposer.org/installer | php
     cd ~ && sudo mv composer.phar /usr/local/bin/composer
 }
+
+function build_image_nginx() {
+    IMAGE_DIR=${IMG_DIR_NGINX}
+    cat << EOF > ${IMAGE_DIR}/install.sh
+#!/bin/bash -x
+
+EOF
+    chmod a+x ${IMAGE_DIR}/install.sh
+
+cat << EOF > ${IMAGE_DIR}/Dockerfile
+    FROM ${IMG_NAME_BASE}
+    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
+    ADD ./ /container
+    RUN /container/install.sh
+EOF
+
+    RETPATH=$(pwd)
+    cd ${IMAGE_DIR} && sudo docker build -t ${IMG_NAME_NGINX} ./
+    cd ${RETPATH}
+    sudo docker image ls
+}
+
+
 
 
 function install_php() {

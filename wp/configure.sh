@@ -1,6 +1,86 @@
 #!/bin/bash -x
 
+export DEBIAN_FRONTEND="noninteractive"
+
 . ./set_env.sh
+
+function autoremove() {
+    sudo apt-get autoremove -yqq
+    sudo apt-get autoclean -yqq
+    sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+}
+
+function install_base () {
+    sudo add-apt-repository universe
+    sudo apt-get update -yqq
+
+    sudo apt-get install -yqq \
+        ca-certificates \
+        apt-utils \
+        software-properties-common \
+        apt-transport-https
+
+    sudo apt-get install -yqq --no-install-recommends --no-install-suggests \
+        bash \
+        sudo \
+        dialog \
+        tzdata \
+        locales \
+        lsb-core \
+        gnupg1 \
+        gnupg2 \
+        curl \
+        dnsutils \
+        net-tools \
+        vim \
+
+    sudo apt-get dist-upgrade -yqq --allow-downgrades
+
+    # Setup locales
+    for LOC in ru_RU en_US
+    do
+        sudo locale-gen ${LOC}.UTF-8
+    done
+    sudo localedef ru_RU.UTF-8 -i ru_RU -f UTF-8;
+
+    # Timezone setup
+    sudo ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+    sudo dpkg-reconfigure --frontend noninteractive tzdata
+
+    sudo ldconfig
+}
+
+function purge_npm() {
+    sudo apt purge -yqq nginx*
+    sudo apt purge -yqq php${PHPVER}*
+    sudo apt purge -yqq php-fpm${PHPVER}*
+
+    [[ -d /etc/php ]] && sudo rm -rf /etc/php
+}
+
+function install_npm () {
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ABF5BD827BD9BF62
+    sudo add-apt-repository "deb http://nginx.org/packages/ubuntu/ $(LSB) nginx"
+
+    sudo apt-get update -yqq
+
+    sudo apt-get install -yqq --no-install-recommends --no-install-suggests \
+        nginx \
+        php${PHPVER} \
+        php${PHPVER}-fpm \
+        php${PHPVER}-opcache \
+        php${PHPVER}-mysql \
+        php${PHPVER}-gd \
+        php${PHPVER}-json \
+        php${PHPVER}-xml \
+        php${PHPVER}-ssh2 \
+        php${PHPVER}-oauth \
+        php${PHPVER}-zip \
+        php${PHPVER}-xsl \
+        php${PHPVER}-xmlrpc \
+        php${PHPVER}-curl
+}
+
 
 function configure_openssh() {
     [ -d ~/.ssh ] || mkdir ~/.ssh
@@ -121,114 +201,6 @@ function generate_cert() {
         -passout pass: \
         -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.p12
 }
-
-function build_base_image() {
-    IMAGE_DIR=${IMG_DIR_BASE}
-    cat << EOF > ${IMAGE_DIR}/install.sh
-#!/bin/bash -x
-    LSB=\$(lsb_release -s -c)
-
-    export DEBIAN_FRONTEND="noninteractive"
-
-    apt-get update -yqq
-
-    apt-get install -yqq \
-        ca-certificates \
-        apt-utils \
-        software-properties-common \
-        apt-transport-https \
-
-    add-apt-repository universe
-
-    # Add nginx repository
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ABF5BD827BD9BF62
-    sudo add-apt-repository "deb http://nginx.org/packages/ubuntu/ \${LSB} nginx"
-
-    sudo apt purge -yqq nginx.*
-
-    apt-get install -yqq --no-install-recommends --no-install-suggests \
-        bash \
-        sudo \
-        dialog \
-        tzdata \
-        locales \
-        lsb-core \
-        gnupg1 \
-        gnupg2 \
-        curl \
-        dnsutils \
-        net-tools \
-        vim \
-        nginx \
-        php${PHPVER} \
-        php${PHPVER}-fpm \
-        php${PHPVER}-zip \
-        php${PHPVER}-opcache \
-        php${PHPVER}-mysql \
-        php${PHPVER}-gd \
-        php${PHPVER}-json \
-        php${PHPVER}-xml \
-        php${PHPVER}-xsl \
-        php${PHPVER}-xmlrpc \
-        php${PHPVER}-curl \
-
-    apt-get dist-upgrade -yqq --allow-downgrades
-    apt-get autoremove -yqq
-    apt-get autoclean -yqq
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-    # Setup locales
-    for LOC in ru_RU en_US
-    do
-        locale-gen \${LOC}.UTF-8
-    done
-    localedef ru_RU.UTF-8 -i ru_RU -f UTF-8;
-
-    # Timezone setup
-    ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
-    dpkg-reconfigure --frontend noninteractive tzdata
-
-    ldconfig
-EOF
-    chmod a+x ${IMAGE_DIR}/install.sh
-
-cat << EOF > ${IMAGE_DIR}/Dockerfile
-    #FROM debian:stretch-slim
-    FROM ubuntu:latest
-    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
-    ADD ./ /container
-    ENV DEBIAN_FRONTEND noninteractive
-    RUN /container/install.sh
-EOF
-
-    RETPATH=$(pwd)
-    cd ${IMAGE_DIR} && sudo docker build -t ${IMG_NAME_BASE} ./
-    cd ${RETPATH}
-    sudo docker image ls
-}
-
-function build_image_nginx() {
-    IMAGE_DIR=${IMG_DIR_NGINX}
-    cat << EOF > ${IMAGE_DIR}/install.sh
-#!/bin/bash -x
-
-EOF
-    chmod a+x ${IMAGE_DIR}/install.sh
-
-cat << EOF > ${IMAGE_DIR}/Dockerfile
-    FROM ${IMG_NAME_BASE}
-    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
-    ADD ./ /container
-    RUN /container/install.sh
-EOF
-
-    RETPATH=$(pwd)
-    cd ${IMAGE_DIR} && sudo docker build -t ${IMG_NAME_NGINX} ./
-    cd ${RETPATH}
-    sudo docker image ls
-}
-
-
 
 # https://habr.com/ru/post/316802/
 function build_image_fpm_adm() {
@@ -604,15 +576,20 @@ EOF
     # curl https://api.wordpress.org/secret-key/1.1/salt/
 }
 
+
+install_base
+install_npm
+
 configure_openssh
 configure_hosts
 setup_users_groups
 setup_folders
 generate_cert
-build_base_image
-build_image_nginx
-build_image_fpm_adm
-build_image_fpm_prd
+
+#build_base_image
+#build_image_nginx
+#build_image_fpm_adm
+#build_image_fpm_prd
 #configure_docker_nets
 #configure_nginx
 #configure_unit
