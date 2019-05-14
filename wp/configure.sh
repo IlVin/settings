@@ -50,7 +50,7 @@ function install_base () {
     sudo ldconfig
 }
 
-function purge_npm() {
+function purge_web() {
     sudo apt purge -yqq nginx*
     sudo apt purge -yqq php${PHPVER}*
     sudo apt purge -yqq php-fpm${PHPVER}*
@@ -58,7 +58,7 @@ function purge_npm() {
     [[ -d /etc/php ]] && sudo rm -rf /etc/php
 }
 
-function install_npm () {
+function install_web () {
     sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ABF5BD827BD9BF62
     sudo add-apt-repository "deb http://nginx.org/packages/ubuntu/ $(LSB) nginx"
 
@@ -131,13 +131,32 @@ function setup_users_groups() {
             fi
         done
     done
+
+    for grp in ${GROUP_FPM_PRD}
+    do
+        if [ `getent group ${grp}` ]
+        then
+            echo "Group ${grp} exists"
+        else
+            sudo groupadd ${grp}
+        fi
+        for user in ${USER_FPM_PRD}
+        do
+            if [[ $(id -u ${user} 2>/dev/null) > 0 ]]
+            then
+                echo "User ${user} exists"
+            else
+                sudo useradd -d /dev/null -s /sbin/nologin -g ${grp} ${user}
+            fi
+        done
+    done
 }
 
 function setup_folders() {
-    for VAR in PRJ_ROOT CONF_DIR IMG_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR RUN_DIR LOG_DIR STATE_DIR
+    for VAR in PRJ_ROOT CONF_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR RUN_DIR LOG_DIR ROOT_DIR
     do
         sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!VAR}
-        for SUFFIX in NGINX UNIT_ADM UNIT_PRD BASE FPM FPM_ADM FPM_PRD
+        for SUFFIX in NGINX BASE FPM FPM_ADM FPM_PRD
         do
             DIR_VAR="${VAR}_${SUFFIX}"
             if [[ ${!DIR_VAR} != '' ]]
@@ -203,197 +222,128 @@ function generate_cert() {
 }
 
 # https://habr.com/ru/post/316802/
-function build_image_fpm_adm() {
-    cat << EOF > ${IMG_DIR_FPM_ADM}/install.sh
-#!/bin/bash -x
-
+# https://qwertys.ru/?p=78 - chroot
+function configure_fpm() {
     sudo sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/${PHPVER}/fpm/php-fpm.conf
-
-    sudo sed -i -e "s/listen\s*=.*/listen = 9000/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i "s|;\s*log_errors|log_errors On|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i -e "s/;chdir\s*=\s*\/var\/www/chdir = $(escaped_htdocs_dir)/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/user\s*=\s*nobody/user = ${USER_ADM}/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/group\s*=\s*nobody/group = ${GROUP_ADM}/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/;clear_env\s*=\s*no/clear_env = no/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-
-    sudo sed -i "s/display_errors\s*=\s*(On|Off)/display_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/display_startup_errors\s*=\s*(On|Off)/display_startup_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/log_errors\s*=\s*(On|Off)/log_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|doc_root\s*=.*|doc_root = ${HTDOCS_DIR}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/user_dir\s*=.*/user_dir =/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/allow_url_fopen\s*=\s*(On|Off)/allow_url_fopen = Off/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/allow_url_include\s*=\s*(On|Off)/allow_url_include = Off/" /etc/php/${PHPVER}/fpm/php.ini
-
-
-    sudo sed -i "s|;date.timezone =.*|date.timezone = ${TIMEZONE}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|memory_limit =.*|memory_limit = ${PHP_MEMORY_LIMIT}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|upload_max_filesize =.*|upload_max_filesize = ${MAX_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|max_file_uploads =.*|max_file_uploads = ${PHP_MAX_FILE_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|post_max_size =.*|post_max_size = ${PHP_MAX_POST}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" /etc/php/${PHPVER}/fpm/php.ini
-
-EOF
-    chmod a+x ${IMG_DIR_FPM_ADM}/install.sh
-
-cat << EOF > ${IMG_DIR_FPM_ADM}/Dockerfile
-    FROM ${IMG_NAME_BASE}
-    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
-    ADD ./ /container
-    ENV DEBIAN_FRONTEND noninteractive
-    RUN /container/install.sh
-    EXPOSE 9000
-    CMD ["php-fpm${PHPVER}"]
-EOF
-
-    RETPATH=$(pwd)
-    cd ${IMG_DIR_FPM_ADM} && sudo docker build -t ${IMG_NAME_FPM_ADM} ./
-    cd ${RETPATH}
-    sudo docker image ls
-}
-
-function build_image_fpm_prd() {
-    cat << EOF > ${IMG_DIR_FPM_PRD}/install.sh
-#!/bin/bash -x
-
-    sudo sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/${PHPVER}/fpm/php-fpm.conf
-
-    sudo sed -i -e "s/listen\s*=.*/listen = 9000/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/;chdir\s*=\s*\/var\/www/chdir = $(escaped_htdocs_dir)/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/user\s*=\s*nobody/user = ${USER_PRD}/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/group\s*=\s*nobody/group = ${GROUP_PRD}/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/;clear_env\s*=\s*no/clear_env = no/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
-    sudo sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/${PHPVER}/fpm/pool.d/www.conf
 
     sudo sed -i "s/display_errors\s*=\s*(On|Off)/display_errors = Off/" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s/display_startup_errors\s*=\s*(On|Off)/display_startup_errors = Off/" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s/log_errors\s*=\s*(On|Off)/log_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|;date.timezone =.*|date.timezone = ${TIMEZONE}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/allow_url_fopen\s*=\s*(On|Off)/allow_url_fopen = Off/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/allow_url_include\s*=\s*(On|Off)/allow_url_include = Off/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/;date\.timezone =.*/date.timezone = ${TIMEZONE}/" /etc/php/${PHPVER}/fpm/php.ini
+
     sudo sed -i "s|memory_limit =.*|memory_limit = ${PHP_MEMORY_LIMIT}|" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s|upload_max_filesize =.*|upload_max_filesize = ${MAX_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s|max_file_uploads =.*|max_file_uploads = ${PHP_MAX_FILE_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s|post_max_size =.*|post_max_size = ${PHP_MAX_POST}|" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" /etc/php/${PHPVER}/fpm/php.ini
 
-EOF
-    chmod a+x ${IMG_DIR_FPM_PRD}/install.sh
+    sudo sed -i "s|doc_root\s*=.*|doc_root = ${HTDOCS_DIR}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s/user_dir\s*=.*/user_dir =/" /etc/php/${PHPVER}/fpm/php.ini
 
-cat << EOF > ${IMG_DIR_FPM_PRD}/Dockerfile
-    FROM ${IMG_NAME_BASE}
-    MAINTAINER Ilia Vinokurov <ilvin@iv77msk.ru>
-    ADD ./ /container
-    ENV DEBIAN_FRONTEND noninteractive
-    RUN /container/install.sh
-    EXPOSE 9000
-    CMD ["php-fpm${PHPVER}"]
-EOF
-
-    RETPATH=$(pwd)
-    cd ${IMG_DIR_FPM_PRD} && sudo docker build -t ${IMG_NAME_FPM_PRD} ./
-    cd ${RETPATH}
-    sudo docker image ls
+    [[ -f /etc/php/${PHPVER}/fpm/pool.d/www.conf ]] && sudo mv /etc/php/${PHPVER}/fpm/pool.d/www.conf /etc/php/${PHPVER}/fpm/example_pool.conf
 }
 
-function configure_docker_nets() {
-    for NET_ID in $(net_adm_ids) $(net_prd_ids)
+function install_user() {
+    install_user_user=$1
+    install_user_group=$2
+    if [ `getent group ${install_user_group}` ]
+    then
+        echo "Group ${install_user_group} exists"
+    else
+        sudo groupadd ${install_user_group}
+    fi
+    if [[ $(id -u ${install_user_user} 2>/dev/null) > 0 ]]
+    then
+        echo "User ${install_user_user} exists"
+    else
+        sudo useradd -d /dev/null -s /sbin/nologin -g ${install_user_group} ${install_user_user}
+    fi
+}
+
+function make_sandbox() {
+    make_sandbox_root=$1
+    make_sandbox_user=$2
+    make_sandbox_group=$3
+
+    make_sandbox_files=(dev/random dev/urandom etc/localtime etc/hosts etc/resolv.conf)
+    for make_sandbox_file in ${make_sandbox_files[@]}
     do
-        sudo docker network inspect ${NET_ID} | jq '.[].Containers | keys' | grep -Po '"[^"]+"' | grep -Po '[^"]+' | xargs -r sudo docker container stop
-        sudo docker network rm ${NET_ID}
+        sudo umount -f ${make_sandbox_root}/${make_sandbox_file}
     done
-    sudo docker network create "${NET_ADM}" --internal --attachable
-    sudo docker network create "${NET_PRD}" --internal --attachable
+
+    [[ -d ${make_sandbox_root} || -f ${make_sandbox_root} ]] && sudo rm -rf ${make_sandbox_root}
+    sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,o-w,g+s ${make_sandbox_root}/{etc,dev,usr/share/zoneinfo}
+    sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,g+s ${make_sandbox_root}/tmp
+    for make_sandbox_file in ${make_sandbox_files[@]}
+    do
+        sudo -u ${make_sandbox_user} -g ${make_sandbox_group} touch ${make_sandbox_root}/${make_sandbox_file}
+        sudo mount -o bind,ro,noexec /${make_sandbox_file} ${make_sandbox_root}/${make_sandbox_file}
+    done
 }
 
-function configure_unit() {
-    cat << EOF | jq . | tee ${CONF_UNIT_ADM} > /dev/null
-    {
-        "listeners": {
-            "*:${PORT_UNIT_ADM}": {
-                "application": "WP_INDEX_ADM"
-             }
-        },
+function configure_fpm_adm() {
+    [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s/\[www\]/[${PRJ_NAME}_adm]/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
-        "applications": {
-            "WP_INDEX_ADM": {
-                "type": "php",
-                "processes": {
-                    "max": 20,
-                    "spare": 5
-                },
-                "user": "${PRJ_OWNER}",
-                "group": "${PRJ_GROUP}",
-                "root": "${HTDOCS_DIR}",
-                "script": "index.php"
-            }
-        }
-    }
-EOF
-    cat << EOF | jq . | tee ${CONF_UNIT_PRD} > /dev/null
-    {
-        "listeners": {
-            "*:${PORT_UNIT_PRD}": {
-                "application": "WP_INDEX_PRD"
-             }
-        },
+    sudo sed -i -e "s/user\s*=.*/user = ${USER_FPM_ADM}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s/group\s*=.*/group = ${GROUP_FPM_ADM}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
-        "applications": {
-            "WP_INDEX_PRD": {
-                "type": "php",
-                "processes": {
-                    "max": 20,
-                    "spare": 5
-                },
-                "user": "${PRJ_OWNER}",
-                "group": "${PRJ_GROUP}",
-                "root": "${HTDOCS_DIR}",
-                "script": "index.php"
-            }
-        }
-    }
-EOF
+    sudo sed -i -e "s|listen\s*=.*|listen = ${SOCK_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s/listen\.owner\s*=.*/listen.owner = ${USER_NGINX}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s/listen\.group\s*=.*/listen.group = ${GROUP_NGINX}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+
+    sudo sed -i -e "s|;access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s/;access\.format\s*=/access.format =/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+
+    install_user ${USER_FPM_ADM} ${GROUP_FPM_ADM}
+    make_sandbox ${ROOT_FPM_ADM} ${USER_FPM_ADM} ${GROUP_FPM_ADM}
+    sudo sed -i -e "s|;chroot\s*=.*|chroot = ${ROOT_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+
+    sudo sed -i -e "s/;chdir\s*=\s*\/var\/www/chdir = $(escaped_htdocs_dir)/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s/;clear_env\s*=\s*no/clear_env = no/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+}
+
+function configure_fpm_prd() {
+    [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s/\[www\]/[${PRJ_NAME}_prd]/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+
+    sudo sed -i -e "s/user\s*=.*/user = ${USER_FPM_PRD}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s/group\s*=.*/group = ${GROUP_FPM_PRD}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+
+    sudo sed -i -e "s|listen\s*=.*|listen = ${SOCK_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s/listen\.owner\s*=.*/listen.owner = ${USER_NGINX}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s/listen\.group\s*=.*/listen.group = ${GROUP_NGINX}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+
+    sudo sed -i -e "s|;access\.log\s*=.*|access.log = ${ACCESS_LOG_PRD_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s/;access\.format\s*=/access.format =/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+
+    install_user ${USER_FPM_PRD} ${GROUP_FPM_PRD}
+    sudo install -g ${GROUP_FPM_PRD} -o ${USER_FPM_PRD} -d -m a+rwx,o-w,g+s ${ROOT_FPM_PRD}
+    sudo sed -i -e "s|;chroot\s*=.*|chroot = ${ROOT_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+
+    sudo sed -i -e "s/;chdir\s*=\s*\/var\/www/chdir = $(escaped_htdocs_dir)/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s/;clear_env\s*=\s*no/clear_env = no/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 }
 
 function configure_nginx() {
     RESTRICTIONS=<<EOF
-        # Global restrictions configuration file.
-        # Designed to be included in any server {} block.
         location = /favicon.ico {
-            log_not_found off;
-            access_log off;
+            #log_not_found off;
+            #access_log off;
         }
 
-        # robots.txt fallback to index.php
         location = /robots.txt {
-            # Some WordPress plugin gererate robots.txt file
             allow all;
             try_files \$uri \$uri/ /index.php?\$args \@robots;
-            access_log off;
-            log_not_found off;
+            #access_log off;
+            #log_not_found off;
         }
-
-        # additional fallback if robots.txt doesn't exist
         location @robots {
            return 200 "User-agent: *\\nDisallow: /wp-admin/\\nAllow: /wp-admin/admin-ajax.php\\n";
-        }
-
-        # Deny all attempts to access hidden files such as .htaccess, .htpasswd, .DS_Store (Mac) excepted .well-known directory.
-        # Keep logging the requests to parse later (or to pass to firewall utilities such as fail2ban)
-        location ~ /\\.(?!well-known\\/) {
-            deny all;
-        }
-
-        # Deny access to any files with a .php extension in the uploads directory for the single site
-        location /wp-content/uploads {
-            location ~ \\.php$ {
-            deny all;
-            }
-        }
-
-        # Deny access to any files with a .php extension in the uploads directory
-        # Works in sub-directory installs and also in multisite network
-        # Keep logging the requests to parse later (or to pass to firewall utilities such as fail2ban)
-        location ~* /(?:uploads|files)/.*\\.php$ {
-            deny all;
         }
 
         location ~ /\\.(ht|git|svn) {
@@ -402,24 +352,34 @@ function configure_nginx() {
 EOF
 
     cat << EOF | tee ${CONF_NGINX} > /dev/null
+        user  ${USER_NGINX};
+        group  ${GROUP_NGINX};
+        worker_processes  1;
+        error_log  /var/log/nginx/error.log warn;
+        pid        /var/run/nginx.pid;
+
         events {
-            worker_connections 768;
-            # multi_accept on;
+            worker_connections 1024;
         }
 
         http {
+            include       /etc/nginx/mime.types;
+            default_type  application/octet-stream;
+
+            log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                              '$status $body_bytes_sent "$http_referer" '
+                              '"$http_user_agent" "$http_x_forwarded_for"';
+            access_log  /var/log/nginx/access.log  main;
+
             sendfile on;
             tcp_nopush on;
             tcp_nodelay on;
             keepalive_timeout 65;
-            types_hash_max_size 2048;
-            # server_tokens off;
 
+            # types_hash_max_size 2048;
+            # server_tokens off;
             # server_names_hash_bucket_size 64;
             # server_name_in_redirect off;
-
-            include /etc/nginx/mime.types;
-            default_type application/octet-stream;
 
             ## SSL Settings
             ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
@@ -432,10 +392,6 @@ EOF
             ssl_stapling on;
             ssl_verify_client optional;
 
-            ## Logging Settings
-            access_log /var/log/nginx/access.log;
-            error_log /var/log/nginx/error.log;
-
             ## Gzip Settings
             # gzip on;
 
@@ -447,11 +403,11 @@ EOF
             # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
             upstream wp_adm_upstream {
-                server ${HOSTNAME_UNIT_ADM}:${PORT_UNIT_ADM};
+                server unix:${SOCK_FPM_ADM};
             }
 
             upstream wp_prd_upstream {
-                server ${HOSTNAME_UNIT_PRD}:${PORT_UNIT_PRD};
+                server unix:${SOCK_FPM_PRD};
             }
 
             server {
@@ -577,19 +533,21 @@ EOF
 }
 
 
-install_base
-install_npm
+# install_base
+# purge_web
+# install_web
 
-configure_openssh
-configure_hosts
+# configure_openssh
+# configure_hosts
 setup_users_groups
 setup_folders
-generate_cert
+# generate_cert
+
+configure_fpm
+configure_fpm_adm
+configure_fpm_prd
 
 #build_base_image
 #build_image_nginx
-#build_image_fpm_adm
-#build_image_fpm_prd
-#configure_docker_nets
 #configure_nginx
 #configure_unit

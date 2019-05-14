@@ -19,20 +19,12 @@ export NET_ADM="${PRJ_NAME}_net_adm"
 
 export CONF_DIR="${PRJ_ROOT}/conf"
 export CONF_NGINX="${CONF_DIR}/nginx.conf"
-export CONF_UNIT_ADM="${CONF_DIR}/unit_adm.json"
-export CONF_UNIT_PRD="${CONF_DIR}/unit_prd.json"
+export CONF_NGINX_ADM="${CONF_DIR}/nginx_adm.conf"
+export CONF_NGINX_PRD="${CONF_DIR}/nginx_prd.conf"
 
-export IMG_DIR_BASE="${CONF_DIR}/img_base"
-export IMG_DIR_NGINX="${CONF_DIR}/img_nginx"
-export IMG_DIR_FPM="${CONF_DIR}/img_fpm"
-export IMG_DIR_FPM_ADM="${CONF_DIR}/img_fpm_adm"
-export IMG_DIR_FPM_PRD="${CONF_DIR}/img_fpm_prd"
-
-export IMG_NAME_BASE="${PRJ_NAME}_base:v001"
-export IMG_NAME_NGINX="${PRJ_NAME}_nginx:v001"
-export IMG_NAME_FPM="${PRJ_NAME}_fpm:v001"
-export IMG_NAME_FPM_ADM="${PRJ_NAME}_fpm_adm:v001"
-export IMG_NAME_FPM_PRD="${PRJ_NAME}_fpm_prd:v001"
+#export ROOT_DIR_NGINX="${PRJ_ROOT}/root_nginx"
+export ROOT_FPM_ADM="${PRJ_ROOT}/root_fpm_adm"
+export ROOT_FPM_PRD="${PRJ_ROOT}/root_fpm_prd"
 
 export RUN_DIR="${PRJ_ROOT}/run"
 export RUN_DIR_NGINX="${RUN_DIR}/nginx"
@@ -42,11 +34,12 @@ export RUN_DIR_FPM_ADM="${RUN_DIR}/fpm_adm"
 export RUN_DIR_FPM_PRD="${RUN_DIR}/fpm_prd"
 
 export LOG_DIR="${PRJ_ROOT}/logs"
-export LOG_DIR_NGINX="${LOG_DIR}/nginx"
-export LOG_DIR_UNIT_ADM="${LOG_DIR}/unit_adm"
-export LOG_DIR_UNIT_PRD="${LOG_DIR}/unit_prd"
-export LOG_DIR_FPM_ADM="${LOG_DIR}/fpm_adm"
-export LOG_DIR_FPM_PRD="${LOG_DIR}/fpm_prd"
+export ACCESS_LOG_NGINX="${LOG_DIR}/access-${PRJ_NAME}-nginx_log"
+export ACCESS_LOG_FPM_ADM="${LOG_DIR}/access-${PRJ_NAME}-fpm-adm_log"
+export ACCESS_LOG_FPM_PRD="${LOG_DIR}/access-${PRJ_NAME}-fpm-prd_log"
+export ERROR_LOG_NGINX="${LOG_DIR}/error-${PRJ_NAME}-nginx_log"
+export ERROR_LOG_FPM_ADM="${LOG_DIR}/error-${PRJ_NAME}-fpm-adm_log"
+export WRROR_LOG_FPM_PRD="${LOG_DIR}/error-${PRJ_NAME}-fpm-prd_log"
 
 export STATE_DIR="${PRJ_ROOT}/state"
 export STATE_DIR_UNIT_ADM="${STATE_DIR}/unit_adm"
@@ -62,10 +55,8 @@ export CERT_DIR_FPM_ADM="${STATE_DIR_FPM_ADM}/certs"
 export CERT_DIR_FPM_PRD="${STATE_DIR_FPM_PRD}/certs"
 
 export PORT_NGINX="80"
-export PORT_UNIT_ADM="8080"
-export PORT_UNIT_PRD="8081"
-export PORT_FPM_ADM="8082"
-export PORT_FPM_PRD="8083"
+export SOCK_FPM_ADM="/run/php/${PRJ_NAME}-fpm-adm.sock"
+export SOCK_FPM_PRD="/run/php/${PRJ_NAME}-fpm-prd.sock"
 
 export HOSTNAME_NGINX="${PRJ_NAME}_nginx"
 export HOSTNAME_UNIT_ADM="${PRJ_NAME}_unit_adm"
@@ -92,10 +83,18 @@ export DB_NAME_ADM="wp_${PRJ_NAME}_adm"
 export DB_USER_ADM=${USER}
 export DB_PASSWORD_ADM=${DEFAULT_PASSWD}
 
-export USER_ADM=${PRJ_OWNER}
-export GROUP_ADM=${PRJ_GROUP}
-export USER_PRD='www-prd'
-export GROUP_PRD='www-prd'
+export USER_NGINX='nginx'
+export GROUP_NGINX='nginx'
+
+export USER_ADM="${PRJ_NAME}-adm"
+export GROUP_ADM="${PRJ_NAME}-adm"
+export USER_PRD="${PRJ_NAME}-prd"
+export GROUP_PRD="${PRJ_NAME}-prd"
+
+export USER_FPM_ADM="${PRJ_NAME}-fpm-adm"
+export GROUP_FPM_ADM="${PRJ_NAME}-fpm-adm"
+export USER_FPM_PRD="${PRJ_NAME}-fpm-prd"
+export GROUP_FPM_PRD="${PRJ_NAME}-fpm-prd"
 
 export PHPVER='7.2'
 export TIMEZONE='Europe/Moscow'
