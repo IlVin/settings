@@ -29,8 +29,6 @@ export ROOT_FPM_PRD="${PRJ_ROOT}/root_fpm_prd"
 
 export RUN_DIR="${PRJ_ROOT}/run"
 export RUN_DIR_NGINX="${RUN_DIR}/nginx"
-export RUN_DIR_UNIT_ADM="${RUN_DIR}/unit_adm"
-export RUN_DIR_UNIT_PRD="${RUN_DIR}/unit_prd"
 export RUN_DIR_FPM_ADM="${RUN_DIR}/fpm_adm"
 export RUN_DIR_FPM_PRD="${RUN_DIR}/fpm_prd"
 
@@ -56,8 +54,8 @@ export CERT_DIR_FPM_ADM="${STATE_DIR_FPM_ADM}/certs"
 export CERT_DIR_FPM_PRD="${STATE_DIR_FPM_PRD}/certs"
 
 export PORT_NGINX="80"
-export SOCK_FPM_ADM="/run/php/${PRJ_NAME}-fpm-adm.sock"
-export SOCK_FPM_PRD="/run/php/${PRJ_NAME}-fpm-prd.sock"
+export SOCK_FPM_ADM="${RUN_DIR_FPM_ADM}/${PRJ_NAME}-fpm-adm.sock"
+export SOCK_FPM_PRD="${RUN_DIR_FPM_PRD}/${PRJ_NAME}-fpm-prd.sock"
 
 export HOSTNAME_NGINX="${PRJ_NAME}_nginx"
 export HOSTNAME_UNIT_ADM="${PRJ_NAME}_unit_adm"

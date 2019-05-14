@@ -266,25 +266,36 @@ function make_sandbox() {
     make_sandbox_root=$1
     make_sandbox_user=$2
     make_sandbox_group=$3
-    make_sandbox_ro_folders=$4
-    make_sandbox_rw_folders=$5
+    make_sandbox_mount_ro_folders=$4
+    make_sandbox_mount_rw_folders=$5
 
-    make_sandbox_files=(/dev/random /dev/urandom /etc/localtime /etc/hosts /etc/resolv.conf)
+    make_sandbox_mount_ro_files=(/dev/random /dev/urandom /etc/localtime /etc/hosts /etc/resolv.conf)
 
-    for make_sandbox_file in ${make_sandbox_files[@]} ${make_sandbox_ro_folders[@]} ${make_sandbox_rw_folders[@]}
+    # UNOUNT folders and files
+    for make_sandbox_file in ${make_sandbox_mount_ro_files[@]} ${make_sandbox_mount_ro_folders[@]} ${make_sandbox_mount_rw_folders[@]}
     do
         sudo umount -f ${make_sandbox_root}${make_sandbox_file}
     done
 
     [[ -d ${make_sandbox_root} || -f ${make_sandbox_root} ]] && sudo rm -rf ${make_sandbox_root}
-    sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}/{,etc,dev,usr,usr/share,usr/share/zoneinfo}
-    sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,g+s ${make_sandbox_root}/tmp
 
-    # Install system files
-    for make_sandbox_file in ${make_sandbox_files[@]}
+    # MOUNT system RO files
+    for make_sandbox_file in ${make_sandbox_mount_ro_files[@]}
     do
         sudo -u ${make_sandbox_user} -g ${make_sandbox_group} touch ${make_sandbox_root}${make_sandbox_file}
         sudo mount -o bind,ro,noexec ${make_sandbox_file} ${make_sandbox_root}${make_sandbox_file}
+    done
+
+    # Create system RO folders
+    for make_sandbox_folder in / /etc /dev /usr /usr/share /usr/share/zoneinfo
+    do
+        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
+    done
+
+    # Create system RW folders
+    for make_sandbox_folder in /tmp
+    do
+        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,g+s ${make_sandbox_root}${make_sandbox_folder}
     done
 
     # Create project folders
@@ -293,15 +304,15 @@ function make_sandbox() {
         sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
     done
 
-    # Install RO folders
-    for make_sandbox_folder in ${make_sandbox_ro_folders[@]}
+    # MOUNT RO folders
+    for make_sandbox_folder in ${make_sandbox_mount_ro_folders[@]}
     do
         sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
         sudo mount -o bind,ro,noexec ${make_sandbox_folder} ${make_sandbox_root}${make_sandbox_folder}
     done
 
-    # Install RW folders
-    for make_sandbox_folder in ${make_sandbox_rw_folders[@]}
+    # MOUNT RW folders
+    for make_sandbox_folder in ${make_sandbox_mount_rw_folders[@]}
     do
         sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,o-w,g+s ${make_sandbox_root}${make_sandbox_folder}
         sudo mount -o bind,rw,noexec ${make_sandbox_folder} ${make_sandbox_root}${make_sandbox_folder}
@@ -313,46 +324,46 @@ function configure_fpm_adm() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
     sudo sed -i -e "s/\[www\]/[${PRJ_NAME}_adm]/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
-    sudo sed -i -e "s/user\s*=.*/user = ${USER_FPM_ADM}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s/group\s*=.*/group = ${GROUP_FPM_ADM}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|user\s*=.*|user = ${USER_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|group\s*=.*|group = ${GROUP_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
     sudo sed -i -e "s|listen\s*=.*|listen = ${SOCK_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s/listen\.owner\s*=.*/listen.owner = ${USER_NGINX}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s/listen\.group\s*=.*/listen.group = ${GROUP_NGINX}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
-    sudo sed -i -e "s|;access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s/;access\.format\s*=/access.format =/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*access\.format\s*=|access.format =|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
     install_user ${USER_FPM_ADM} ${GROUP_FPM_ADM}
-    make_sandbox ${ROOT_FPM_ADM} ${USER_FPM_ADM} ${GROUP_FPM_ADM} "${CONF_DIR}" "${LOG_DIR} ${HTDOCS_DIR}"
-    sudo sed -i -e "s|;chroot\s*=.*|chroot = ${ROOT_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    make_sandbox ${ROOT_FPM_ADM} ${USER_FPM_ADM} ${GROUP_FPM_ADM} "${CONF_DIR}" "${LOG_DIR} ${HTDOCS_DIR} ${RUN_DIR_FPM_ADM}"
+    sudo sed -i -e "s|;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
-    sudo sed -i -e "s|;chdir\s*=\s*\/var\/www|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s/;clear_env\s*=\s*no/clear_env = no/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*clear_env\s*=.*|clear_env = no|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 }
 
 function configure_fpm_prd() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
     sudo sed -i -e "s/\[www\]/[${PRJ_NAME}_prd]/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
-    sudo sed -i -e "s/user\s*=.*/user = ${USER_FPM_PRD}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s/group\s*=.*/group = ${GROUP_FPM_PRD}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|user\s*=.*|user = ${USER_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|group\s*=.*|group = ${GROUP_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
     sudo sed -i -e "s|listen\s*=.*|listen = ${SOCK_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s/listen\.owner\s*=.*/listen.owner = ${USER_NGINX}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s/listen\.group\s*=.*/listen.group = ${GROUP_NGINX}/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
-    sudo sed -i -e "s|;access\.log\s*=.*|access.log = ${ACCESS_LOG_PRD_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s/;access\.format\s*=/access.format =/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*access\.format\s*=|access.format =|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
     install_user ${USER_FPM_PRD} ${GROUP_FPM_PRD}
-    make_sandbox ${ROOT_FPM_PRD} ${USER_FPM_PRD} ${GROUP_FPM_PRD} "${CONF_DIR} ${HTDOCS_DIR}" "${LOG_DIR}"
-    sudo sed -i -e "s|;chroot\s*=.*|chroot = ${ROOT_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    make_sandbox ${ROOT_FPM_PRD} ${USER_FPM_PRD} ${GROUP_FPM_PRD} "${CONF_DIR} ${HTDOCS_DIR}" "${LOG_DIR} ${RUN_DIR_FPM_PRD}"
+    sudo sed -i -e "s|;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
-    sudo sed -i -e "s|;chdir\s*=\s*\/var\/www|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s/;clear_env\s*=\s*no/clear_env = no/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*clear_env\s*=.*|clear_env = no|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 }
 
 function configure_nginx() {
