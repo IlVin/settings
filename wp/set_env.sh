@@ -5,9 +5,10 @@ export PRJ_NAME='wp'
 export PRJ_DOMAINS=("${PRJ_NAME}.iv77msk.ru" "www.${PRJ_NAME}.iv77msk.ru")
 export PRJ_DOMAIN=${PRJ_DOMAINS[0]}
 export PRJ_EMAIL="ilvin@mail.ru"
-export PRJ_ROOT="/www/${PRJ_NAME}"
-export PRJ_OWNER="www"
-export PRJ_GROUP="www"
+export PRJ_PREFIX="/www"
+export PRJ_ROOT="${PRJ_PREFIX}/${PRJ_NAME}"
+export PRJ_OWNER="${PRJ_NAME}-www"
+export PRJ_GROUP="${PRJ_NAME}-www"
 export CACHE_DIR="${PRJ_ROOT}/cache"
 export HTDOCS_DIR="${PRJ_ROOT}/htdocs"
 export WP_DIR="${HTDOCS_DIR}"
@@ -73,28 +74,28 @@ export DEFAULT_PASSWD="P@ssw0rd"
 # Установки базы данных
 export DB_HOST_PRD="localhost"
 export DB_PORT_PRD="localhost"
-export DB_NAME_PRD="wp_${PRJ_NAME}_prd"
-export DB_USER_PRD=${USER}
+export DB_NAME_PRD="${PRJ_NAME}_prd"
+export DB_USER_PRD="${PRJ_NAME}-prd"
 export DB_PASSWORD_PRD=${DEFAULT_PASSWD}
 
 export DB_HOST_ADM="localhost"
 export DB_PORT_ADM="localhost"
-export DB_NAME_ADM="wp_${PRJ_NAME}_adm"
-export DB_USER_ADM=${USER}
+export DB_NAME_ADM="${PRJ_NAME}_adm"
+export DB_USER_ADM="${PRJ_NAME}-adm"
 export DB_PASSWORD_ADM=${DEFAULT_PASSWD}
 
 export USER_NGINX='nginx'
-export GROUP_NGINX='nginx'
+export GROUP_NGINX=${PRJ_GROUP}
 
 export USER_ADM="${PRJ_NAME}-adm"
-export GROUP_ADM="${PRJ_NAME}-adm"
+export GROUP_ADM=${PRJ_GROUP}
 export USER_PRD="${PRJ_NAME}-prd"
-export GROUP_PRD="${PRJ_NAME}-prd"
+export GROUP_PRD=${PRJ_GROUP}
 
 export USER_FPM_ADM="${PRJ_NAME}-fpm-adm"
-export GROUP_FPM_ADM="${PRJ_NAME}-fpm-adm"
+export GROUP_FPM_ADM=${PRJ_GROUP}
 export USER_FPM_PRD="${PRJ_NAME}-fpm-prd"
-export GROUP_FPM_PRD="${PRJ_NAME}-fpm-prd"
+export GROUP_FPM_PRD=${PRJ_GROUP}
 
 export PHPVER='7.2'
 export TIMEZONE='Europe/Moscow'
@@ -105,27 +106,6 @@ export PHP_MAX_POST='128M'
 
 function net_adm_ids() {
     sudo docker network ls -f NAME=${NET_ADM} -q
-}
-
-function net_prd_ids() {
-    sudo docker network ls -f NAME=${NET_PRD} -q
-}
-
-function net_bridge_ids() {
-    sudo docker network ls -f NAME=bridge -q
-}
-
-function fpm_adm_ids() {
-    sudo docker container ls -a -f NAME=${HOSTNAME_FPM_PRD} -q
-}
-
-function fpm_prd_ids() {
-    sudo docker container ls -a -f NAME=${HOSTNAME_FPM_ADM} -q
-}
-
-function nginx_ids() {
-    sudo docker container ls -a -f NAME=${HOSTNAME_NGINX} -q
-}
 
 function LSB() {
     lsb_release -s -c
