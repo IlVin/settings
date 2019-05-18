@@ -153,7 +153,7 @@ function setup_users_groups() {
 }
 
 function setup_folders() {
-    for VAR in PRJ_ROOT CONF_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR RUN_DIR LOG_DIR
+    for VAR in PRJ_ROOT ROOT_TEMPLATE CONF_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR RUN_DIR LOG_DIR
     do
         sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!VAR}
         for SUFFIX in NGINX BASE FPM FPM_ADM FPM_PRD
@@ -226,21 +226,21 @@ function generate_cert() {
 function configure_fpm() {
     sudo sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/${PHPVER}/fpm/php-fpm.conf
 
-    sudo sed -i "s/display_errors\s*=\s*(On|Off)/display_errors = Off/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/display_startup_errors\s*=\s*(On|Off)/display_startup_errors = Off/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/log_errors\s*=\s*(On|Off)/log_errors = On/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/allow_url_fopen\s*=\s*(On|Off)/allow_url_fopen = Off/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/allow_url_include\s*=\s*(On|Off)/allow_url_include = Off/" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/;date\.timezone =.*/date.timezone = ${TIMEZONE}/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|display_errors\s*=.*|display_errors = Off|g" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|display_startup_errors\s*=.*|display_startup_errors = Off|g" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|log_errors\s*=.*|log_errors = On|g" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|allow_url_fopen\s*=.*|allow_url_fopen = Off|g" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|allow_url_include\s*=.*|allow_url_include = Off|g" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|;*\s*date\.timezone\s*=.*|date.timezone = ${TIMEZONE}|g" /etc/php/${PHPVER}/fpm/php.ini
 
     sudo sed -i "s|memory_limit =.*|memory_limit = ${PHP_MEMORY_LIMIT}|" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s|upload_max_filesize =.*|upload_max_filesize = ${MAX_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s|max_file_uploads =.*|max_file_uploads = ${PHP_MAX_FILE_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
     sudo sed -i "s|post_max_size =.*|post_max_size = ${PHP_MAX_POST}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i "s|;*\s*cgi\.fix_pathinfo\s*=.*|cgi.fix_pathinfo = 0|g" /etc/php/${PHPVER}/fpm/php.ini
 
     sudo sed -i "s|doc_root\s*=.*|doc_root = ${HTDOCS_DIR}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s/user_dir\s*=.*/user_dir =/" /etc/php/${PHPVER}/fpm/php.ini
+    #sudo sed -i "s|user_dir\s*=.*|user_dir =|g" /etc/php/${PHPVER}/fpm/php.ini
 
     [[ -f /etc/php/${PHPVER}/fpm/pool.d/www.conf ]] && sudo mv /etc/php/${PHPVER}/fpm/pool.d/www.conf /etc/php/${PHPVER}/fpm/example_pool.conf
 }
@@ -262,6 +262,16 @@ function install_user() {
     fi
 }
 
+function build_root_template() {
+    echo "BUILD ROOT_TEMPLATE"
+
+    # Create system folders
+    for build_root_template_folder in /dev /etc /usr /usr/share /usr/share/zoneinfo
+    do
+        sudo install -g ${PRJ_OWNER} -o ${PRJ_GROUP} -d -m a+rwx,o-w,g+s ${ROOT_TEMPLATE}${build_root_template_folder}
+    done
+}
+
 function make_sandbox() {
     make_sandbox_root=$1
     make_sandbox_user=$2
@@ -269,9 +279,9 @@ function make_sandbox() {
     make_sandbox_mount_ro_folders=$4
     make_sandbox_mount_rw_folders=$5
 
-    make_sandbox_mount_ro_files=(/dev/random /dev/urandom /etc/localtime /etc/hosts /etc/resolv.conf)
+    make_sandbox_mount_ro_files=(/dev/null /dev/random /dev/urandom /etc/localtime /etc/hosts /etc/resolv.conf)
 
-    # UNOUNT folders and files
+    # UMOUNT folders and files
     for make_sandbox_file in ${make_sandbox_mount_ro_files[@]} ${make_sandbox_mount_ro_folders[@]} ${make_sandbox_mount_rw_folders[@]}
     do
         sudo umount -f ${make_sandbox_root}${make_sandbox_file}
@@ -279,17 +289,17 @@ function make_sandbox() {
 
     [[ -d ${make_sandbox_root} || -f ${make_sandbox_root} ]] && sudo rm -rf ${make_sandbox_root}
 
+    # Create system RO folders
+    for make_sandbox_folder in / /etc /dev /usr /usr/share /usr/share/zoneinfo
+    do
+        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
+    done
+
     # MOUNT system RO files
     for make_sandbox_file in ${make_sandbox_mount_ro_files[@]}
     do
         sudo -u ${make_sandbox_user} -g ${make_sandbox_group} touch ${make_sandbox_root}${make_sandbox_file}
         sudo mount -o bind,ro,noexec ${make_sandbox_file} ${make_sandbox_root}${make_sandbox_file}
-    done
-
-    # Create system RO folders
-    for make_sandbox_folder in / /etc /dev /usr /usr/share /usr/share/zoneinfo
-    do
-        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
     done
 
     # Create system RW folders
@@ -318,6 +328,55 @@ function make_sandbox() {
         sudo mount -o bind,rw,noexec ${make_sandbox_folder} ${make_sandbox_root}${make_sandbox_folder}
     done
 
+}
+
+
+function make_root_fpm_adm() {
+    # make_sandbox ${ROOT_FPM_ADM} ${USER_FPM_ADM} ${GROUP_FPM_ADM} "${CONF_DIR}" "${LOG_DIR} ${HTDOCS_DIR} ${RUN_DIR_FPM_ADM}"
+
+    local user=${USER_FPM_ADM}
+    local group=${GROUP_FPM_ADM}
+    local root=${ROOT_FPM_ADM}
+    local folder
+    local file
+
+    # Delete root folder if exists
+    cat /etc/mtab | cut -f 2 -d ' ' | grep "${root}" | xargs sudo umount -f
+    [[ -d ${root} || -f ${root} ]] && sudo rm -rf ${root}
+
+    # Create system folders
+    for folder in / /tmp /etc /dev /usr /usr/share /usr/share/zoneinfo ${RUN_DIR_FPM_ADM} ${LOG_DIR}
+    do
+        sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
+    done
+
+    # MOUNT RO system files
+    for file in /dev/random /dev/urandom /etc/localtime /etc/hosts /etc/resolv.conf
+    do
+        sudo -u ${user} -g ${group} touch ${root}${file}
+        sudo mount -o bind,ro,noexec ${file} ${root}${file}
+    done
+
+    # MOUNT RW system files
+    for file in /dev/null
+    do
+        sudo -u ${user} -g ${group} touch ${root}${file}
+        sudo mount -o bind,rw,noexec ${file} ${root}${file}
+    done
+
+    # MOUNT RO folders
+    for folder in /usr/share/zoneinfo ${CONF_DIR}
+    do
+        sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
+        sudo mount -o bind,ro,noexec ${folder} ${root}${folder}
+    done
+
+    # MOUNT RW folders
+    for folder in ${HTDOCS_DIR}
+    do
+        sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
+        sudo mount -o bind,rw,noexec ${folder} ${root}${folder}
+    done
 }
 
 function configure_fpm_adm() {
@@ -579,10 +638,11 @@ EOF
 setup_users_groups
 setup_folders
 # generate_cert
+make_root_fpm_adm
 
-configure_fpm
-configure_fpm_adm
-configure_fpm_prd
+#configure_fpm
+#configure_fpm_adm
+#configure_fpm_prd
 
 #build_base_image
 #build_image_nginx

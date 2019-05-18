@@ -24,6 +24,7 @@ export CONF_NGINX_ADM="${CONF_DIR}/nginx_adm.conf"
 export CONF_NGINX_PRD="${CONF_DIR}/nginx_prd.conf"
 
 #export ROOT_DIR_NGINX="${PRJ_ROOT}/root_nginx"
+export ROOT_TEMPLATE="${PRJ_ROOT}/root_template"
 export ROOT_FPM_ADM="${PRJ_ROOT}/root_fpm_adm"
 export ROOT_FPM_PRD="${PRJ_ROOT}/root_fpm_prd"
 
