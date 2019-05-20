@@ -330,13 +330,16 @@ function make_sandbox() {
 
 }
 
-
-function make_root_fpm_adm() {
-    # make_sandbox ${ROOT_FPM_ADM} ${USER_FPM_ADM} ${GROUP_FPM_ADM} "${CONF_DIR}" "${LOG_DIR} ${HTDOCS_DIR} ${RUN_DIR_FPM_ADM}"
-
-    local user=${USER_FPM_ADM}
-    local group=${GROUP_FPM_ADM}
-    local root=${ROOT_FPM_ADM}
+function make_root_fpm() {
+    #             root            user            group            make_folder                     mount_ro_folders mount_rw_folders
+    local root=$1
+    local user=$2
+    local group=$3
+    local make_folders=$4
+    local mount_ro_folders=$5
+    local mount_rw_folders=$6
+    local mount_ro_files=$7
+    local mount_rw_files=$8
     local folder
     local file
 
@@ -345,7 +348,7 @@ function make_root_fpm_adm() {
     [[ -d ${root} || -f ${root} ]] && sudo rm -rf ${root}
 
     # Create system folders
-    for folder in / /tmp /etc /dev /usr /usr/share /usr/share/zoneinfo ${RUN_DIR_FPM_ADM} ${LOG_DIR}
+    for folder in / /tmp /etc /dev /usr /usr/share /usr/share/zoneinfo ${make_folders}
     do
         sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
     done
@@ -353,28 +356,46 @@ function make_root_fpm_adm() {
     # MOUNT RO system files
     for file in /dev/random /dev/urandom /etc/localtime /etc/hosts /etc/resolv.conf
     do
-        sudo -u ${user} -g ${group} touch ${root}${file}
+        [[ -f ${root}${file} ]] || sudo -u ${user} -g ${group} touch ${root}${file}
         sudo mount -o bind,ro,noexec ${file} ${root}${file}
     done
 
     # MOUNT RW system files
     for file in /dev/null
     do
-        sudo -u ${user} -g ${group} touch ${root}${file}
+        [[ -f ${root}${file} ]] || sudo -u ${user} -g ${group} touch ${root}${file}
+        sudo mount -o bind,rw,noexec ${file} ${root}${file}
+    done
+
+    # MOUNT RO files
+    for file in ${mount_ro_files}
+    do
+        [[ -f ${file} ]] || sudo -u ${user} -g ${group} touch ${file}
+        [[ -f ${root}${file} ]] || sudo -u ${user} -g ${group} touch ${root}${file}
+        sudo mount -o bind,ro,noexec ${file} ${root}${file}
+    done
+
+    # MOUNT RW files
+    for file in ${mount_rw_files}
+    do
+        [[ -f ${file} ]] || sudo -u ${user} -g ${group} touch ${file}
+        [[ -f ${root}${file} ]] || sudo -u ${user} -g ${group} touch ${root}${file}
         sudo mount -o bind,rw,noexec ${file} ${root}${file}
     done
 
     # MOUNT RO folders
-    for folder in /usr/share/zoneinfo ${CONF_DIR}
+    for folder in /usr/share/zoneinfo ${mount_ro_folders}
     do
-        sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
+        [[ -d ${folder} ]] || sudo -u ${user} -g ${group} mkdir -p ${folder}
+        [[ -d ${root}${folder} ]] || sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
         sudo mount -o bind,ro,noexec ${folder} ${root}${folder}
     done
 
     # MOUNT RW folders
-    for folder in ${HTDOCS_DIR}
+    for folder in ${mount_rw_folders}
     do
-        sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
+        [[ -d ${folder} ]] || sudo -u ${user} -g ${group} mkdir -p ${folder}
+        [[ -d ${root}${folder} ]] || sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
         sudo mount -o bind,rw,noexec ${folder} ${root}${folder}
     done
 }
@@ -394,7 +415,8 @@ function configure_fpm_adm() {
     sudo sed -i -e "s|;*\s*access\.format\s*=|access.format =|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
     install_user ${USER_FPM_ADM} ${GROUP_FPM_ADM}
-    make_sandbox ${ROOT_FPM_ADM} ${USER_FPM_ADM} ${GROUP_FPM_ADM} "${CONF_DIR}" "${LOG_DIR} ${HTDOCS_DIR} ${RUN_DIR_FPM_ADM}"
+    #             root            user            group            make_folder  mount_ro_folders mount_rw_folders                    mount_ro_files   mount_rw_files
+    make_root_fpm ${ROOT_FPM_ADM} ${USER_FPM_ADM} ${GROUP_FPM_ADM} "${LOG_DIR}" ""               "${RUN_DIR_FPM_ADM} ${HTDOCS_DIR}"  ""               "${ACCESS_LOG_FPM_ADM} ${ERROR_LOG_FPM_ADM}"
     sudo sed -i -e "s|;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
     sudo sed -i -e "s|;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
@@ -417,7 +439,9 @@ function configure_fpm_prd() {
     sudo sed -i -e "s|;*\s*access\.format\s*=|access.format =|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
     install_user ${USER_FPM_PRD} ${GROUP_FPM_PRD}
-    make_sandbox ${ROOT_FPM_PRD} ${USER_FPM_PRD} ${GROUP_FPM_PRD} "${CONF_DIR} ${HTDOCS_DIR}" "${LOG_DIR} ${RUN_DIR_FPM_PRD}"
+
+    #             root            user            group            make_folder  mount_ro_folders mount_rw_folders      mount_ro_files mount_rw_files
+    make_root_fpm ${ROOT_FPM_PRD} ${USER_FPM_PRD} ${GROUP_FPM_PRD} "${LOG_DIR}" "${HTDOCS_DIR}"  "${RUN_DIR_FPM_PRD}"  ""             "${ACCESS_LOG_FPM_ADM} ${ERROR_LOG_FPM_ADM}"
     sudo sed -i -e "s|;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
     sudo sed -i -e "s|;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
@@ -638,11 +662,10 @@ EOF
 setup_users_groups
 setup_folders
 # generate_cert
-make_root_fpm_adm
 
 #configure_fpm
-#configure_fpm_adm
-#configure_fpm_prd
+configure_fpm_adm
+configure_fpm_prd
 
 #build_base_image
 #build_image_nginx
