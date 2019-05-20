@@ -338,8 +338,8 @@ function make_root_fpm() {
     local make_folders=$4
     local mount_ro_folders=$5
     local mount_rw_folders=$6
-    local mount_ro_files=$7
-    local mount_rw_files=$8
+    #local mount_ro_files=$7
+    #local mount_rw_files=$8
     local folder
     local file
 
@@ -404,49 +404,107 @@ function configure_fpm_adm() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
     sudo sed -i -e "s/\[www\]/[${PRJ_NAME}_adm]/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
-    sudo sed -i -e "s|user\s*=.*|user = ${USER_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|group\s*=.*|group = ${GROUP_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*user\s*=.*|user = ${USER_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*group\s*=.*|group = ${GROUP_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
-    sudo sed -i -e "s|listen\s*=.*|listen = ${SOCK_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*listen\s*=.*|listen = ${SOCK_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*listen\.mode\s*=.*|listen.mode = 0660|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+
+    sudo sed -i -e "s|;*\s*process\.priority\s*=.*|process.priority = -19|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
     sudo sed -i -e "s|;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
     sudo sed -i -e "s|;*\s*access\.format\s*=|access.format =|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
     install_user ${USER_FPM_ADM} ${GROUP_FPM_ADM}
-    #             root            user            group            make_folder  mount_ro_folders mount_rw_folders                    mount_ro_files   mount_rw_files
-    make_root_fpm ${ROOT_FPM_ADM} ${USER_FPM_ADM} ${GROUP_FPM_ADM} "${LOG_DIR}" ""               "${RUN_DIR_FPM_ADM} ${HTDOCS_DIR}"  ""               "${ACCESS_LOG_FPM_ADM} ${ERROR_LOG_FPM_ADM}"
+    # make_root_fpm
+        # root
+        # user
+        # group
+        # make_folder
+        # mount_ro_folders
+        # mount_rw_folders
+    make_root_fpm \
+        ${ROOT_FPM_ADM} \
+        ${USER_FPM_ADM} \
+        ${GROUP_FPM_ADM} \
+        "" \
+        "" \
+        "${LOG_DIR_FPM_ADM} ${RUN_DIR_FPM_ADM} ${HTDOCS_DIR}"
     sudo sed -i -e "s|;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
     sudo sed -i -e "s|;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*clear_env\s*=.*|clear_env = no|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*clear_env\s*=.*|clear_env = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
     sudo sed -i -e "s|;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*env\[TMP\]\s*=.*|env\[TMP\] = /tmp|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+
+    sudo sed -i -e "s|;*\s*pm\s*=.*|pm = dynamic|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*pm\.max_children\s*=.*|pm.max_children = 2|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*pm\.min_childrens*=.*|pm.min_children = 2|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*pm\.start_servers\s*=.*|pm.start_servers = 2|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*pm\.min_spare_servers\s*=.*|pm.min_spare_servers = 0|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*pm\.max_spare_servers\s*=.*|pm.max_spare_servers = 2|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*pm\.process_idle_timeout\s*=.*|pm.process_idle_timeout = 10s|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*pm\.max_requests\s*=.*|pm.max_requests = 1000|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+
+    sudo sed -i -e "s|;*\s*pm\.status_path\s*=.*|pm.status_path = ${STATUS_PATH_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*ping\.path\s*=.*|ping.path = ${PING_PATH_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -e "s|;*\s*ping\.response\s*=.*|ping.response = ${PING_RESPONSE_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 }
 
 function configure_fpm_prd() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
     sudo sed -i -e "s/\[www\]/[${PRJ_NAME}_prd]/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
-    sudo sed -i -e "s|user\s*=.*|user = ${USER_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|group\s*=.*|group = ${GROUP_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*user\s*=.*|user = ${USER_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*group\s*=.*|group = ${GROUP_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
-    sudo sed -i -e "s|listen\s*=.*|listen = ${SOCK_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*listen\s*=.*|listen = ${SOCK_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*listen\.mode\s*=.*|listen.mode = 0660|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+
+    sudo sed -i -e "s|;*\s*process\.priority\s*=.*|process.priority = -18|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
     sudo sed -i -e "s|;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
     sudo sed -i -e "s|;*\s*access\.format\s*=|access.format =|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
     install_user ${USER_FPM_PRD} ${GROUP_FPM_PRD}
 
-    #             root            user            group            make_folder  mount_ro_folders mount_rw_folders      mount_ro_files mount_rw_files
-    make_root_fpm ${ROOT_FPM_PRD} ${USER_FPM_PRD} ${GROUP_FPM_PRD} "${LOG_DIR}" "${HTDOCS_DIR}"  "${RUN_DIR_FPM_PRD}"  ""             "${ACCESS_LOG_FPM_ADM} ${ERROR_LOG_FPM_ADM}"
+    # make_root_fpm
+        # root
+        # user
+        # group
+        # make_folder
+        # mount_ro_folders
+        # mount_rw_folders
+    make_root_fpm \
+        ${ROOT_FPM_PRD} \
+        ${USER_FPM_PRD} \
+        ${GROUP_FPM_PRD} \
+        "" \
+        "${HTDOCS_DIR}" \
+        "${LOG_DIR_FPM_PRD} ${RUN_DIR_FPM_PRD}"
     sudo sed -i -e "s|;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
     sudo sed -i -e "s|;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*clear_env\s*=.*|clear_env = no|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*clear_env\s*=.*|clear_env = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
     sudo sed -i -e "s|;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*env\[TMP\]\s*=.*|env\[TMP\] = /tmp|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+
+    sudo sed -i -e "s|;*\s*pm\s*=.*|pm = dynamic|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*pm\.max_children\s*=.*|pm.max_children = 20|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*pm\.min_childrens*=.*|pm.min_children = 5|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*pm\.start_servers\s*=.*|pm.start_servers = 5|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*pm\.min_spare_servers\s*=.*|pm.min_spare_servers = 3|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*pm\.max_spare_servers\s*=.*|pm.max_spare_servers = 5|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*pm\.process_idle_timeout\s*=.*|pm.process_idle_timeout = 10s|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*pm\.max_requests\s*=.*|pm.max_requests = 1000|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+
+    sudo sed -i -e "s|;*\s*pm\.status_path\s*=.*|pm.status_path = ${STATUS_PATH_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*ping\.path\s*=.*|ping.path = ${PING_PATH_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -e "s|;*\s*ping\.response\s*=.*|ping.response = ${PING_RESPONSE_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 }
 
 function configure_nginx() {

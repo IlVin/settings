@@ -34,12 +34,29 @@ export RUN_DIR_FPM_ADM="${RUN_DIR}/fpm_adm"
 export RUN_DIR_FPM_PRD="${RUN_DIR}/fpm_prd"
 
 export LOG_DIR="${PRJ_ROOT}/logs"
-export ACCESS_LOG_NGINX="${LOG_DIR}/access-${PRJ_NAME}-nginx_log"
-export ACCESS_LOG_FPM_ADM="${LOG_DIR}/access-${PRJ_NAME}-fpm-adm_log"
-export ACCESS_LOG_FPM_PRD="${LOG_DIR}/access-${PRJ_NAME}-fpm-prd_log"
-export ERROR_LOG_NGINX="${LOG_DIR}/error-${PRJ_NAME}-nginx_log"
-export ERROR_LOG_FPM_ADM="${LOG_DIR}/error-${PRJ_NAME}-fpm-adm_log"
-export WRROR_LOG_FPM_PRD="${LOG_DIR}/error-${PRJ_NAME}-fpm-prd_log"
+export LOG_DIR_NGINX="${PRJ_ROOT}/logs/nginx"
+export LOG_DIR_FPM_ADM="${PRJ_ROOT}/logs/fpm-adm"
+export LOG_DIR_FPM_PRD="${PRJ_ROOT}/logs/fpm-prd"
+
+export ACCESS_LOG_NGINX="${LOG_DIR_NGINX}/access-${PRJ_NAME}-nginx_log"
+export ACCESS_LOG_FPM_ADM="${LOG_DIR_FPM_ADM}/access-${PRJ_NAME}-fpm-adm_log"
+export ACCESS_LOG_FPM_PRD="${LOG_DIR_FPM_PRD}/access-${PRJ_NAME}-fpm-prd_log"
+
+export ERROR_LOG_NGINX="${LOG_DIR_NGINX}/error-${PRJ_NAME}-nginx_log"
+export ERROR_LOG_FPM_ADM="${LOG_DIR_FPM_ADM}/error-${PRJ_NAME}-fpm-adm_log"
+export ERROR_LOG_FPM_PRD="${LOG_DIR_FPM_PRD}/error-${PRJ_NAME}-fpm-prd_log"
+
+export STATUS_PATH_NGINX="/${PRJ_NAME}-status_nginx"
+export STATUS_PATH_FPM_ADM="/${PRJ_NAME}-status_fpm_adm"
+export STATUS_PATH_FPM_PRD="/${PRJ_NAME}-status_fpm_prd"
+
+export PING_PATH_NGINX="/${PRJ_NAME}-ping_nginx"
+export PING_PATH_FPM_ADM="/${PRJ_NAME}-ping_fpm_adm"
+export PING_PATH_FPM_PRD="/${PRJ_NAME}-ping_fpm_prd"
+
+export PING_RESPONSE_NGINX="${PRJ_NAME}-pong_nginx"
+export PING_RESPONSE_FPM_ADM="${PRJ_NAME}-pong_fpm_adm"
+export PING_RESPONSE_FPM_PRD="${PRJ_NAME}-pong_fpm_prd"
 
 export STATE_DIR="${PRJ_ROOT}/state"
 export STATE_DIR_UNIT_ADM="${STATE_DIR}/unit_adm"
