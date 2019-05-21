@@ -258,6 +258,7 @@ function install_user() {
     if [[ $(id -u ${install_user_user} 2>/dev/null) > 0 ]]
     then
         echo "User ${install_user_user} exists"
+        sudo usermod -a -G ${install_user_group} ${install_user_user}
     else
         sudo useradd -d /dev/null -s /sbin/nologin -g ${install_user_group} ${install_user_user}
     fi
@@ -332,7 +333,6 @@ function make_sandbox() {
 }
 
 function make_root_fpm() {
-    #             root            user            group            make_folder                     mount_ro_folders mount_rw_folders
     local root=$1
     local user=$2
     local group=$3
@@ -349,9 +349,9 @@ function make_root_fpm() {
     [[ -d ${root} || -f ${root} ]] && sudo rm -rf ${root}
 
     # Create system folders
-    for folder in / /tmp /etc /dev /usr /usr/share /usr/share/zoneinfo ${make_folders}
+    for folder in / /tmp /etc /dev /usr /var /var/log /usr/share /usr/share/zoneinfo ${make_folders}
     do
-        sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
+        sudo install -g ${group} -o ${user} -d -m a+rwx,g+s,o-w ${root}${folder}
     done
 
     # MOUNT RO system files
@@ -388,7 +388,7 @@ function make_root_fpm() {
     for folder in /usr/share/zoneinfo ${mount_ro_folders}
     do
         [[ -d ${folder} ]] || sudo -u ${user} -g ${group} mkdir -p ${folder}
-        [[ -d ${root}${folder} ]] || sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
+        [[ -d ${root}${folder} ]] || sudo install -g ${group} -o ${user} -d -m a+rwx,g+s,o-w ${root}${folder}
         sudo mount -o bind,ro,noexec ${folder} ${root}${folder}
     done
 
@@ -396,7 +396,7 @@ function make_root_fpm() {
     for folder in ${mount_rw_folders}
     do
         [[ -d ${folder} ]] || sudo -u ${user} -g ${group} mkdir -p ${folder}
-        [[ -d ${root}${folder} ]] || sudo install -g ${group} -o ${user} -d -m a+rwx,g+s ${root}${folder}
+        [[ -d ${root}${folder} ]] || sudo install -g ${group} -o ${user} -d -m a+rwx,g+s,o-w ${root}${folder}
         sudo mount -o bind,rw,noexec ${folder} ${root}${folder}
     done
 }
@@ -416,7 +416,7 @@ function configure_fpm_adm() {
         ${ROOT_FPM_ADM} \
         ${USER_FPM_ADM} \
         ${GROUP_FPM_ADM} \
-        "/run" \
+        "" \
         "" \
         "${LOG_DIR_FPM_ADM} ${HTDOCS_DIR}"
 
@@ -465,7 +465,7 @@ function configure_fpm_prd() {
         ${ROOT_FPM_PRD} \
         ${USER_FPM_PRD} \
         ${GROUP_FPM_PRD} \
-        "/run" \
+        "" \
         "${HTDOCS_DIR}" \
         "${LOG_DIR_FPM_PRD}"
 
@@ -550,11 +550,11 @@ EOF
 
     cat << EOF | sudo tee /etc/nginx/conf.d/20_${PRJ_NAME}-upstreams.conf > /dev/null
         upstream wp_adm_upstream {
-            server unix:${SOCK_PATH_FPM_ADM};
+            server unix:${SOCK_FPM_ADM};
         }
 
         upstream wp_prd_upstream {
-            server unix:${SOCK_PATH_FPM_PRD};
+            server unix:${SOCK_FPM_PRD};
         }
 EOF
 
@@ -572,7 +572,7 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
             location @index_php_adm {
                 try_files \$uri =404;
 
-                fastcgi_pass unix:${SOCK_PATH_FPM_ADM};
+                fastcgi_pass unix:${SOCK_FPM_ADM};
                 include fastcgi_params;
                 fastcgi_index index.php;
 
@@ -591,7 +591,7 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
             location @index_php_prd {
                 try_files \$uri =404;
 
-                fastcgi_pass unix:${SOCK_PATH_FPM_PRD};
+                fastcgi_pass unix:${SOCK_FPM_PRD};
                 include fastcgi_params;
                 fastcgi_index index.php;
 
@@ -685,6 +685,7 @@ setup_users_groups
 setup_folders
 # generate_cert
 
+configure_fpm
 configure_fpm_adm
 configure_fpm_prd
 configure_nginx

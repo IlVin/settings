@@ -28,10 +28,8 @@ export ROOT_TEMPLATE="${PRJ_ROOT}/root_template"
 export ROOT_FPM_ADM="${PRJ_ROOT}/root_fpm_adm"
 export ROOT_FPM_PRD="${PRJ_ROOT}/root_fpm_prd"
 
-export SOCK_FPM_ADM="/run/${PRJ_NAME}-fpm-adm.sock"
-export SOCK_FPM_PRD="/run/${PRJ_NAME}-fpm-prd.sock"
-export SOCK_PATH_FPM_ADM="${ROOT_FPM_ADM}${SOCK_FPM_ADM}"
-export SOCK_PATH_FPM_PRD="${ROOT_FPM_PRD}${SOCK_FPM_PRD}"
+export SOCK_FPM_ADM="/run/php/${PRJ_NAME}-fpm-adm.sock"
+export SOCK_FPM_PRD="/run/php/${PRJ_NAME}-fpm-prd.sock"
 
 export LOG_DIR="${PRJ_ROOT}/logs"
 export LOG_DIR_NGINX="${PRJ_ROOT}/logs/nginx"
