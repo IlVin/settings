@@ -28,10 +28,10 @@ export ROOT_TEMPLATE="${PRJ_ROOT}/root_template"
 export ROOT_FPM_ADM="${PRJ_ROOT}/root_fpm_adm"
 export ROOT_FPM_PRD="${PRJ_ROOT}/root_fpm_prd"
 
-export RUN_DIR="${PRJ_ROOT}/run"
-export RUN_DIR_NGINX="${RUN_DIR}/nginx"
-export RUN_DIR_FPM_ADM="${RUN_DIR}/fpm_adm"
-export RUN_DIR_FPM_PRD="${RUN_DIR}/fpm_prd"
+export SOCK_FPM_ADM="/run/${PRJ_NAME}-fpm-adm.sock"
+export SOCK_FPM_PRD="/run/${PRJ_NAME}-fpm-prd.sock"
+export SOCK_PATH_FPM_ADM="${ROOT_FPM_ADM}${SOCK_FPM_ADM}"
+export SOCK_PATH_FPM_PRD="${ROOT_FPM_PRD}${SOCK_FPM_PRD}"
 
 export LOG_DIR="${PRJ_ROOT}/logs"
 export LOG_DIR_NGINX="${PRJ_ROOT}/logs/nginx"
@@ -72,8 +72,6 @@ export CERT_DIR_FPM_ADM="${STATE_DIR_FPM_ADM}/certs"
 export CERT_DIR_FPM_PRD="${STATE_DIR_FPM_PRD}/certs"
 
 export PORT_NGINX="80"
-export SOCK_FPM_ADM="${RUN_DIR_FPM_ADM}/${PRJ_NAME}-fpm-adm.sock"
-export SOCK_FPM_PRD="${RUN_DIR_FPM_PRD}/${PRJ_NAME}-fpm-prd.sock"
 
 export HOSTNAME_NGINX="${PRJ_NAME}_nginx"
 export HOSTNAME_UNIT_ADM="${PRJ_NAME}_unit_adm"
@@ -119,9 +117,6 @@ export PHP_MEMORY_LIMIT='1024M'
 export MAX_UPLOAD='128M'
 export PHP_MAX_FILE_UPLOAD='128'
 export PHP_MAX_POST='128M'
-
-function net_adm_ids() {
-    sudo docker network ls -f NAME=${NET_ADM} -q
 
 function LSB() {
     lsb_release -s -c

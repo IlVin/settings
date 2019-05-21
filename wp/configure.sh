@@ -56,6 +56,7 @@ function purge_web() {
     sudo apt purge -yqq php-fpm${PHPVER}*
 
     [[ -d /etc/php ]] && sudo rm -rf /etc/php
+    [[ -d /etc/nginx ]] && sudo rm -rf /etc/nginx
 }
 
 function install_web () {
@@ -153,7 +154,7 @@ function setup_users_groups() {
 }
 
 function setup_folders() {
-    for VAR in PRJ_ROOT ROOT_TEMPLATE CONF_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR RUN_DIR LOG_DIR
+    for VAR in PRJ_ROOT ROOT_TEMPLATE CONF_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR LOG_DIR
     do
         sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!VAR}
         for SUFFIX in NGINX BASE FPM FPM_ADM FPM_PRD
@@ -402,22 +403,8 @@ function make_root_fpm() {
 
 function configure_fpm_adm() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s/\[www\]/[${PRJ_NAME}_adm]/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-
-    sudo sed -i -e "s|;*\s*user\s*=.*|user = ${USER_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*group\s*=.*|group = ${GROUP_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-
-    sudo sed -i -e "s|;*\s*listen\s*=.*|listen = ${SOCK_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*listen\.mode\s*=.*|listen.mode = 0660|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-
-    sudo sed -i -e "s|;*\s*process\.priority\s*=.*|process.priority = -19|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-
-    sudo sed -i -e "s|;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*access\.format\s*=|access.format =|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-
     install_user ${USER_FPM_ADM} ${GROUP_FPM_ADM}
+
     # make_root_fpm
         # root
         # user
@@ -429,47 +416,42 @@ function configure_fpm_adm() {
         ${ROOT_FPM_ADM} \
         ${USER_FPM_ADM} \
         ${GROUP_FPM_ADM} \
+        "/run" \
         "" \
-        "" \
-        "${LOG_DIR_FPM_ADM} ${RUN_DIR_FPM_ADM} ${HTDOCS_DIR}"
-    sudo sed -i -e "s|;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+        "${LOG_DIR_FPM_ADM} ${HTDOCS_DIR}"
 
-    sudo sed -i -e "s|;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*clear_env\s*=.*|clear_env = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*env\[TMP\]\s*=.*|env\[TMP\] = /tmp|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-
-    sudo sed -i -e "s|;*\s*pm\s*=.*|pm = dynamic|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*pm\.max_children\s*=.*|pm.max_children = 2|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*pm\.min_childrens*=.*|pm.min_children = 2|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*pm\.start_servers\s*=.*|pm.start_servers = 2|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*pm\.min_spare_servers\s*=.*|pm.min_spare_servers = 0|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*pm\.max_spare_servers\s*=.*|pm.max_spare_servers = 2|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*pm\.process_idle_timeout\s*=.*|pm.process_idle_timeout = 10s|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*pm\.max_requests\s*=.*|pm.max_requests = 1000|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-
-    sudo sed -i -e "s|;*\s*pm\.status_path\s*=.*|pm.status_path = ${STATUS_PATH_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*ping\.path\s*=.*|ping.path = ${PING_PATH_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    sudo sed -i -e "s|;*\s*ping\.response\s*=.*|ping.response = ${PING_RESPONSE_FPM_ADM}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    sudo sed -i -r \
+        -e "s|^\s*\[www\]|[${PRJ_NAME}_adm]|g" \
+        -e "s|^;*\s*user\s*=.*|user = ${USER_FPM_ADM}|g" \
+        -e "s|^;*\s*group\s*=.*|group = ${GROUP_FPM_ADM}|g" \
+        -e "s|^;*\s*listen\s*=.*|listen = ${SOCK_FPM_ADM}|g" \
+        -e "s|^;*\s*listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" \
+        -e "s|^;*\s*listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" \
+        -e "s|^;*\s*listen\.mode\s*=.*|listen.mode = 0660|g" \
+        -e "s|^;*\s*process\.priority\s*=.*|process.priority = -19|g" \
+        -e "s|^;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_ADM}|g" \
+        -e "s|^;*\s*access\.format\s*=|access.format =|g" \
+        -e "s|^;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_ADM}|g" \
+        -e "s|^;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" \
+        -e "s|^;*\s*clear_env\s*=.*|clear_env = yes|g" \
+        -e "s|^;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" \
+        -e "s|^;*\s*env\[TMP\]\s*=.*|env\[TMP\] = /tmp|g" \
+        -e "s|^;*\s*pm\s*=.*|pm = static|g" \
+        -e "s|^;*\s*pm\.max_children\s*=.*|pm.max_children = 2|g" \
+        -e "s|^;*\s*pm\.min_childrens*=.*|pm.min_children = 2|g" \
+        -e "s|^;*\s*pm\.start_servers\s*=.*|pm.start_servers = 2|g" \
+        -e "s|^;*\s*pm\.min_spare_servers\s*=.*|pm.min_spare_servers = 0|g" \
+        -e "s|^;*\s*pm\.max_spare_servers\s*=.*|pm.max_spare_servers = 2|g" \
+        -e "s|^;*\s*pm\.process_idle_timeout\s*=.*|pm.process_idle_timeout = 10s|g" \
+        -e "s|^;*\s*pm\.max_requests\s*=.*|pm.max_requests = 1000|g" \
+        -e "s|^;*\s*pm\.status_path\s*=.*|pm.status_path = ${STATUS_PATH_FPM_ADM}|g" \
+        -e "s|^;*\s*ping\.path\s*=.*|ping.path = ${PING_PATH_FPM_ADM}|g" \
+        -e "s|^;*\s*ping\.response\s*=.*|ping.response = ${PING_RESPONSE_FPM_ADM}|g" \
+    /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 }
 
 function configure_fpm_prd() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s/\[www\]/[${PRJ_NAME}_prd]/g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-
-    sudo sed -i -e "s|;*\s*user\s*=.*|user = ${USER_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*group\s*=.*|group = ${GROUP_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-
-    sudo sed -i -e "s|;*\s*listen\s*=.*|listen = ${SOCK_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*listen\.mode\s*=.*|listen.mode = 0660|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-
-    sudo sed -i -e "s|;*\s*process\.priority\s*=.*|process.priority = -18|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-
-    sudo sed -i -e "s|;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*access\.format\s*=|access.format =|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-
     install_user ${USER_FPM_PRD} ${GROUP_FPM_PRD}
 
     # make_root_fpm
@@ -483,35 +465,72 @@ function configure_fpm_prd() {
         ${ROOT_FPM_PRD} \
         ${USER_FPM_PRD} \
         ${GROUP_FPM_PRD} \
-        "" \
+        "/run" \
         "${HTDOCS_DIR}" \
-        "${LOG_DIR_FPM_PRD} ${RUN_DIR_FPM_PRD}"
-    sudo sed -i -e "s|;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+        "${LOG_DIR_FPM_PRD}"
 
-    sudo sed -i -e "s|;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*clear_env\s*=.*|clear_env = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*env\[TMP\]\s*=.*|env\[TMP\] = /tmp|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-
-    sudo sed -i -e "s|;*\s*pm\s*=.*|pm = dynamic|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*pm\.max_children\s*=.*|pm.max_children = 20|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*pm\.min_childrens*=.*|pm.min_children = 5|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*pm\.start_servers\s*=.*|pm.start_servers = 5|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*pm\.min_spare_servers\s*=.*|pm.min_spare_servers = 3|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*pm\.max_spare_servers\s*=.*|pm.max_spare_servers = 5|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*pm\.process_idle_timeout\s*=.*|pm.process_idle_timeout = 10s|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*pm\.max_requests\s*=.*|pm.max_requests = 1000|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-
-    sudo sed -i -e "s|;*\s*pm\.status_path\s*=.*|pm.status_path = ${STATUS_PATH_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*ping\.path\s*=.*|ping.path = ${PING_PATH_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    sudo sed -i -e "s|;*\s*ping\.response\s*=.*|ping.response = ${PING_RESPONSE_FPM_PRD}|g" /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    sudo sed -i -r \
+        -e "s|^\s*\[www\]|[${PRJ_NAME}_prd]|g" \
+        -e "s|^;*\s*user\s*=.*|user = ${USER_FPM_PRD}|g" \
+        -e "s|^;*\s*group\s*=.*|group = ${GROUP_FPM_PRD}|g" \
+        -e "s|^;*\s*listen\s*=.*|listen = ${SOCK_FPM_PRD}|g" \
+        -e "s|^;*\s*listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" \
+        -e "s|^;*\s*listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" \
+        -e "s|^;*\s*listen\.mode\s*=.*|listen.mode = 0660|g" \
+        -e "s|^;*\s*process\.priority\s*=.*|process.priority = -18|g" \
+        -e "s|^;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_PRD}|g" \
+        -e "s|^;*\s*access\.format\s*=|access.format =|g" \
+        -e "s|^;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_PRD}|g" \
+        -e "s|^;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" \
+        -e "s|^;*\s*clear_env\s*=.*|clear_env = yes|g" \
+        -e "s|^;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" \
+        -e "s|^;*\s*env\[TMP\]\s*=.*|env\[TMP\] = /tmp|g" \
+        -e "s|^;*\s*pm\s*=.*|pm = dynamic|g" \
+        -e "s|^;*\s*pm\.max_children\s*=.*|pm.max_children = 20|g" \
+        -e "s|^;*\s*pm\.min_childrens*=.*|pm.min_children = 5|g" \
+        -e "s|^;*\s*pm\.start_servers\s*=.*|pm.start_servers = 5|g" \
+        -e "s|^;*\s*pm\.min_spare_servers\s*=.*|pm.min_spare_servers = 3|g" \
+        -e "s|^;*\s*pm\.max_spare_servers\s*=.*|pm.max_spare_servers = 5|g" \
+        -e "s|^;*\s*pm\.process_idle_timeout\s*=.*|pm.process_idle_timeout = 10s|g" \
+        -e "s|^;*\s*pm\.max_requests\s*=.*|pm.max_requests = 1000|g" \
+        -e "s|^;*\s*pm\.status_path\s*=.*|pm.status_path = ${STATUS_PATH_FPM_PRD}|g" \
+        -e "s|^;*\s*ping\.path\s*=.*|ping.path = ${PING_PATH_FPM_PRD}|g" \
+        -e "s|^;*\s*ping\.response\s*=.*|ping.response = ${PING_RESPONSE_FPM_PRD}|g" \
+    /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 }
 
 function configure_nginx() {
+    install_user ${USER_NGINX} ${GROUP_NGINX}
+
+    sudo sed -r -i \
+        -e "s|^#*(\s*)#*user\s+.*|user ${USER_NGINX};\n|;" \
+        -e "s|^#*(\s*)#*error_log\s+.*|\1error_log ${ERROR_LOG_NGINX} warn;|g" \
+        -e "s|^#*(\s*)#*access_log\s+.*|\1access_log ${ACCESS_LOG_NGINX} main;|g" \
+        -e "s|^#*(\s*)#*sendfile\s+.*|\1sendfile on;|g" \
+        -e "s|^#*(\s*)#*tcp_nopush\s+.*|\1tcp_nopush on;|g" \
+        -e "s|^#*(\s*)#*tcp_nodelay\s+.*|\1tcp_nodelay on;|g" \
+    /etc/nginx/nginx.conf
+        #-e "s|#*(\s*)#*group\s+.*||g;" \
+        #-e "2 s|^|group ${GROUP_NGINX};\n|g" \
+
+
+    cat << EOF | sudo tee /etc/nginx/conf.d/10_${PRJ_NAME}-ssl_settings.conf > /dev/null
+        ## SSL Settings
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
+        ssl_prefer_server_ciphers on;
+
+        ssl_certificate     ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem;
+        ssl_certificate_key ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key;
+        ssl_trusted_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
+        ssl_client_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem;
+        ssl_stapling on;
+        ssl_verify_client optional;
+EOF
+
     RESTRICTIONS=<<EOF
         location = /favicon.ico {
-            #log_not_found off;
-            #access_log off;
+            log_not_found off;
+            access_log off;
         }
 
         location = /robots.txt {
@@ -521,7 +540,7 @@ function configure_nginx() {
             #log_not_found off;
         }
         location @robots {
-           return 200 "User-agent: *\\nDisallow: /wp-admin/\\nAllow: /wp-admin/admin-ajax.php\\n";
+           return 200 "User-agent: *\\nDisallow: /wp-admin/\\nDisallow: /wp-admin/admin-ajax.php\\n";
         }
 
         location ~ /\\.(ht|git|svn) {
@@ -529,127 +548,72 @@ function configure_nginx() {
         }
 EOF
 
-    cat << EOF | tee ${CONF_NGINX} > /dev/null
-        user  ${USER_NGINX};
-        group  ${GROUP_NGINX};
-        worker_processes  1;
-        error_log  /var/log/nginx/error.log warn;
-        pid        /var/run/nginx.pid;
-
-        events {
-            worker_connections 1024;
+    cat << EOF | sudo tee /etc/nginx/conf.d/20_${PRJ_NAME}-upstreams.conf > /dev/null
+        upstream wp_adm_upstream {
+            server unix:${SOCK_PATH_FPM_ADM};
         }
 
-        http {
-            include       /etc/nginx/mime.types;
-            default_type  application/octet-stream;
+        upstream wp_prd_upstream {
+            server unix:${SOCK_PATH_FPM_PRD};
+        }
+EOF
 
-            log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-                              '$status $body_bytes_sent "$http_referer" '
-                              '"$http_user_agent" "$http_x_forwarded_for"';
-            access_log  /var/log/nginx/access.log  main;
+cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
+        server {
+            listen 80 default_server;
+            listen [::]:80 default_server;
+            listen 443 ssl default_server;
+            listen [::]:443 ssl default_server;
+            server_name ${PRJ_DOMAIN};
 
-            sendfile on;
-            tcp_nopush on;
-            tcp_nodelay on;
-            keepalive_timeout 65;
+            root ${HTDOCS_DIR};
+            index index.php;
 
-            # types_hash_max_size 2048;
-            # server_tokens off;
-            # server_names_hash_bucket_size 64;
-            # server_name_in_redirect off;
+            location @index_php_adm {
+                try_files \$uri =404;
 
-            ## SSL Settings
-            ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
-            ssl_prefer_server_ciphers on;
+                fastcgi_pass unix:${SOCK_PATH_FPM_ADM};
+                include fastcgi_params;
+                fastcgi_index index.php;
 
-            ssl_certificate     ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem;
-            ssl_certificate_key ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key;
-            ssl_trusted_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
-            ssl_client_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem;
-            ssl_stapling on;
-            ssl_verify_client optional;
+                fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
+                fastcgi_param  DB_HOST "${DB_HOST_ADM}";
+                fastcgi_param  DB_PORT "${DB_PORT_ADM}";
+                fastcgi_param  DB_NAME "${DB_NAME_ADM}";
+                fastcgi_param  DB_USER "${DB_USER_ADM}";
+                fastcgi_param  DB_PASSWORD "${DB_PASSWORD_ADM}";
 
-            ## Gzip Settings
-            # gzip on;
-
-            # gzip_vary on;
-            # gzip_proxied any;
-            # gzip_comp_level 6;
-            # gzip_buffers 16 8k;
-            # gzip_http_version 1.1;
-            # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-
-            upstream wp_adm_upstream {
-                server unix:${SOCK_FPM_ADM};
+                #gzip on;
+                #gzip_comp_level 4;
+                #gzip_proxied any;
             }
 
-            upstream wp_prd_upstream {
-                server unix:${SOCK_FPM_PRD};
+            location @index_php_prd {
+                try_files \$uri =404;
+
+                fastcgi_pass unix:${SOCK_PATH_FPM_PRD};
+                include fastcgi_params;
+                fastcgi_index index.php;
+
+                fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
+                fastcgi_param  DB_HOST "${DB_HOST_PRD}";
+                fastcgi_param  DB_PORT "${DB_PORT_PRD}";
+                fastcgi_param  DB_NAME "${DB_NAME_PRD}";
+                fastcgi_param  DB_USER "${DB_USER_PRD}";
+                fastcgi_param  DB_PASSWORD "${DB_PASSWORD_PRD}";
+
+                #gzip on;
+                #gzip_comp_level 4;
+                #gzip_proxied any;
             }
 
-            server {
-                listen 80 default_server;
-                listen [::]:80 default_server;
-                listen 443 ssl default_server;
-                listen [::]:443 ssl default_server;
-                server_name ${PRJ_DOMAIN};
+            location / {
+                try_files \$uri \$uri/ @index_php_adm;
+            }
 
-                root ${HTDOCS_DIR};
-                index index.php;
-
-                location @index_php_adm {
-                    proxy_pass http://wp_adm_upstream;
-
-                    proxy_set_header  Host \$host;
-
-                    try_files \$uri =404;
-
-                    proxy_set_header  DB_HOST "${DB_HOST_ADM}";
-                    proxy_set_header  DB_PORT "${DB_PORT_ADM}";
-                    proxy_set_header  DB_NAME "${DB_NAME_ADM}";
-                    proxy_set_header  DB_USER "${DB_USER_ADM}";
-                    proxy_set_header  DB_PASSWORD "${DB_PASSWORD_ADM}";
-
-                    #fastcgi_pass unix:/run/php/php7.2-fpm.sock;
-                    #include fastcgi_params;
-                    #fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
-                    #fastcgi_index index.php;
-                    #gzip on;
-                    #gzip_comp_level 4;
-                    #gzip_proxied any;
-                }
-
-                location @index_php_prd {
-                    proxy_pass http://wp_prd_upstream;
-
-                    proxy_set_header  Host \$host;
-
-                    try_files \$uri =404;
-
-                    proxy_set_header  DB_HOST "${DB_HOST_PRD}";
-                    proxy_set_header  DB_PORT "${DB_PORT_PRD}";
-                    proxy_set_header  DB_NAME "${DB_NAME_PRD}";
-                    proxy_set_header  DB_USER "${DB_USER_PRD}";
-                    proxy_set_header  DB_PASSWORD "${DB_PASSWORD_PRD}";
-
-                    #fastcgi_pass unix:/run/php/php7.2-fpm.sock;
-                    #include fastcgi_params;
-                    #fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
-                    #fastcgi_index index.php;
-                    #gzip on;
-                    #gzip_comp_level 4;
-                    #gzip_proxied any;
-                }
-
-                location / {
-                    try_files \$uri \$uri/ @index_php_adm;
-                }
-
-                location ~* \\.(js|css|png|jpg|jpeg|gif|ico)$ {
-                    expires max;
-                    log_not_found off;
-                }
+            location ~* \\.(js|css|png|jpg|jpeg|gif|ico)$ {
+                expires max;
+                log_not_found off;
             }
         }
 EOF
@@ -711,9 +675,9 @@ EOF
 }
 
 
-# install_base
-# purge_web
-# install_web
+#install_base
+#purge_web
+#install_web
 
 # configure_openssh
 # configure_hosts
@@ -721,11 +685,7 @@ setup_users_groups
 setup_folders
 # generate_cert
 
-#configure_fpm
 configure_fpm_adm
 configure_fpm_prd
+configure_nginx
 
-#build_base_image
-#build_image_nginx
-#configure_nginx
-#configure_unit
