@@ -1,5 +1,7 @@
 #!/bin/bash -x
 
+umask 002
+
 export DEBIAN_FRONTEND="noninteractive"
 
 . ./set_env.sh
@@ -82,6 +84,20 @@ function install_web () {
         php${PHPVER}-curl
 }
 
+function configure_permissions() {
+    local filename
+    for filename in /etc/pam.d/common-session /etc/pam.d/common-session-noninteractive
+    do
+        sudo sed -i -r \
+            -e 's|^(\s*session\s+optional\s+pam_umask.so).*|\1 umask=0002|g' \
+            ${filename}
+    done
+
+    sudo sed -i -r \
+        -e "s|^(# php${PHPVER}-fpm - The PHP FastCGI Process Manager\s*)\$|\1 with umask\numask 0002|g" \
+        -e "s|^umask\s+\d+.*|umask 0002|g" \
+    /etc/init/php${PHPVER}-fpm.conf
+}
 
 function configure_openssh() {
     [ -d ~/.ssh ] || mkdir ~/.ssh
@@ -154,7 +170,7 @@ function setup_users_groups() {
 }
 
 function setup_folders() {
-    for VAR in PRJ_ROOT ROOT_TEMPLATE CONF_DIR HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR LOG_DIR
+    for VAR in PRJ_ROOT HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR LOG_DIR RUN_DIR CONF_DIR
     do
         sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!VAR}
         for SUFFIX in NGINX BASE FPM FPM_ADM FPM_PRD
@@ -349,7 +365,7 @@ function make_root_fpm() {
     [[ -d ${root} || -f ${root} ]] && sudo rm -rf ${root}
 
     # Create system folders
-    for folder in / /tmp /etc /dev /usr /var /var/log /usr/share /usr/share/zoneinfo ${make_folders}
+    for folder in / /tmp /etc /dev /usr /var /usr/share /usr/share/zoneinfo ${make_folders}
     do
         sudo install -g ${group} -o ${user} -d -m a+rwx,g+s,o-w ${root}${folder}
     done
@@ -570,13 +586,13 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
             index index.php;
 
             location @index_php_adm {
-                try_files \$uri =404;
+                #try_files \$uri =404;
 
                 fastcgi_pass unix:${SOCK_FPM_ADM};
                 include fastcgi_params;
                 fastcgi_index index.php;
 
-                fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
+                fastcgi_param  SCRIPT_FILENAME  \$realpath_root\$fastcgi_script_name;
                 fastcgi_param  DB_HOST "${DB_HOST_ADM}";
                 fastcgi_param  DB_PORT "${DB_PORT_ADM}";
                 fastcgi_param  DB_NAME "${DB_NAME_ADM}";
@@ -595,7 +611,7 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
                 include fastcgi_params;
                 fastcgi_index index.php;
 
-                fastcgi_param  SCRIPT_FILENAME  \$realpath_root/\$fastcgi_script_name;
+                fastcgi_param  SCRIPT_FILENAME  \$realpath_root\$fastcgi_script_name;
                 fastcgi_param  DB_HOST "${DB_HOST_PRD}";
                 fastcgi_param  DB_PORT "${DB_PORT_PRD}";
                 fastcgi_param  DB_NAME "${DB_NAME_PRD}";
@@ -608,7 +624,8 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
             }
 
             location / {
-                try_files \$uri \$uri/ @index_php_adm;
+                error_page 418 = @index_php_adm; return 418;
+                #try_files \$uri \$uri/ @index_php_adm;
             }
 
             location ~* \\.(js|css|png|jpg|jpeg|gif|ico)$ {
@@ -674,10 +691,32 @@ EOF
     # curl https://api.wordpress.org/secret-key/1.1/salt/
 }
 
+function create_index_php() {
+    cat << EOF | sudo -u ${PRJ_OWNER} -g ${PRJ_GROUP} tee ${HTDOCS_DIR}/index.php
+<?php
+    phpinfo();
+    echo '<pre>';
+    \$dir = "/";
+    // Открыть заведомо существующий каталог и начать считывать его содержимое
+    if (is_dir(\$dir)) {
+        if (\$dh = opendir(\$dir)) {
+            while ((\$file = readdir(\$dh)) !== false) {
+                print "Файл: \$file : тип: " . filetype(\$dir . \$file) . "\n";
+            }
+            closedir(\$dh);
+        }
+    }
+    echo '</pre>';
+?>
+EOF
+}
+
 
 #install_base
 #purge_web
 #install_web
+
+configure_permissions
 
 # configure_openssh
 # configure_hosts
@@ -689,4 +728,6 @@ configure_fpm
 configure_fpm_adm
 configure_fpm_prd
 configure_nginx
+create_index_php
+
 
