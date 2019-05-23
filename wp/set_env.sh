@@ -1,6 +1,8 @@
 #!/bin/bash -x
 
-umask 002
+export UMASK='0002'
+
+umask ${UMASK}
 
 # Проект
 export PRJ_NAME='wp'

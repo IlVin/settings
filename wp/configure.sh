@@ -1,10 +1,10 @@
 #!/bin/bash -x
 
-umask 002
-
 export DEBIAN_FRONTEND="noninteractive"
 
 . ./set_env.sh
+
+umask ${UMASK}
 
 function autoremove() {
     sudo apt-get autoremove -yqq
@@ -89,14 +89,21 @@ function configure_permissions() {
     for filename in /etc/pam.d/common-session /etc/pam.d/common-session-noninteractive
     do
         sudo sed -i -r \
-            -e 's|^(\s*session\s+optional\s+pam_umask.so).*|\1 umask=0002|g' \
+            -e "s|^(\s*session\s+optional\s+pam_umask.so).*|\1 umask=${UMASK}|g" \
             ${filename}
     done
 
     sudo sed -i -r \
-        -e "s|^(# php${PHPVER}-fpm - The PHP FastCGI Process Manager\s*)\$|\1 with umask\numask 0002|g" \
-        -e "s|^umask\s+\d+.*|umask 0002|g" \
+        -e "s|^(# php${PHPVER}-fpm - The PHP FastCGI Process Manager\s*)\$|\1 with umask\numask ${UMASK}|g" \
+        -e "s|^umask\s+\d+.*|umask ${UMASK}|g" \
     /etc/init/php${PHPVER}-fpm.conf
+
+    cat /lib/systemd/system/php${PHPVER}-fpm.service \
+    | sed -r \
+        -e "s|\[Service\]\s*|[Service]\nUMask=${UMASK}|g" \
+    | sudo tee /etc/systemd/system/php${PHPVER}-fpm.service
+
+    sudo systemctl daemon-reload
 }
 
 function configure_openssh() {
@@ -593,6 +600,7 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
                 fastcgi_index index.php;
 
                 fastcgi_param  SCRIPT_FILENAME  \$realpath_root\$fastcgi_script_name;
+                fastcgi_param  UMASK "${UMASK}";
                 fastcgi_param  DB_HOST "${DB_HOST_ADM}";
                 fastcgi_param  DB_PORT "${DB_PORT_ADM}";
                 fastcgi_param  DB_NAME "${DB_NAME_ADM}";
@@ -612,6 +620,7 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
                 fastcgi_index index.php;
 
                 fastcgi_param  SCRIPT_FILENAME  \$realpath_root\$fastcgi_script_name;
+                fastcgi_param  UMASK "${UMASK}";
                 fastcgi_param  DB_HOST "${DB_HOST_PRD}";
                 fastcgi_param  DB_PORT "${DB_PORT_PRD}";
                 fastcgi_param  DB_NAME "${DB_NAME_PRD}";
@@ -692,7 +701,7 @@ EOF
 }
 
 function create_index_php() {
-    cat << EOF | sudo -u ${PRJ_OWNER} -g ${PRJ_GROUP} tee ${HTDOCS_DIR}/index.php
+    cat << EOF | tee ${HTDOCS_DIR}/index.php
 <?php
     phpinfo();
     echo '<pre>';
@@ -706,6 +715,10 @@ function create_index_php() {
             closedir(\$dh);
         }
     }
+    \$f_hdl = fopen('/umask_test.txt', 'w');
+    fwrite(\$f_hdl, 'test');
+    fclose(\$f_hdl);
+
     echo '</pre>';
 ?>
 EOF

@@ -2,6 +2,8 @@
 
 . ./set_env.sh
 
+umask ${UMASK}
+
 function start_nginx() {
     sudo service nginx start
     sudo systemctl status nginx.service
