@@ -428,20 +428,20 @@ function configure_fpm_adm() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
     install_user ${USER_FPM_ADM} ${GROUP_FPM_ADM}
 
-    # make_root_fpm
+#    # make_root_fpm
         # root
         # user
         # group
         # make_folder
         # mount_ro_folders
         # mount_rw_folders
-    make_root_fpm \
-        ${ROOT_FPM_ADM} \
-        ${USER_FPM_ADM} \
-        ${GROUP_FPM_ADM} \
-        "" \
-        "" \
-        "${LOG_DIR_FPM_ADM} ${HTDOCS_DIR}"
+#    make_root_fpm \
+#        ${ROOT_FPM_ADM} \
+#        ${USER_FPM_ADM} \
+#        ${GROUP_FPM_ADM} \
+#        "" \
+#        "" \
+#        "${LOG_DIR_FPM_ADM} ${HTDOCS_DIR}"
 
     sudo sed -i -r \
         -e "s|^\s*\[www\]|[${PRJ_NAME}_adm]|g" \
@@ -454,7 +454,7 @@ function configure_fpm_adm() {
         -e "s|^;*\s*process\.priority\s*=.*|process.priority = -19|g" \
         -e "s|^;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_ADM}|g" \
         -e "s|^;*\s*access\.format\s*=|access.format =|g" \
-        -e "s|^;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_ADM}|g" \
+        -e "s|^;*\s*chroot\s*=.*|;chroot = ${ROOT_FPM_ADM}|g" \
         -e "s|^;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" \
         -e "s|^;*\s*clear_env\s*=.*|clear_env = yes|g" \
         -e "s|^;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" \

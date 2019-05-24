@@ -27,7 +27,7 @@ export CONF_NGINX="${CONF_DIR}/nginx.conf"
 export CONF_NGINX_ADM="${CONF_DIR}/nginx_adm.conf"
 export CONF_NGINX_PRD="${CONF_DIR}/nginx_prd.conf"
 
-export ROOT_FPM_ADM="${PRJ_ROOT}/root_fpm_adm"
+export ROOT_FPM_ADM="${PRJ_ROOT}"
 export ROOT_FPM_PRD="${PRJ_ROOT}/root_fpm_prd"
 
 export SOCK_FPM_ADM="${RUN_DIR}/${PRJ_NAME}-fpm-adm.sock"
