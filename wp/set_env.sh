@@ -1,4 +1,6 @@
-#!/bin/bash -x
+#!/bin/bash
+
+set +x
 
 export UMASK='0002'
 
@@ -69,7 +71,7 @@ export HOSTNAME_FPM_ADM="${PRJ_NAME}_fpm_adm"
 export HOSTNAME_FPM_PRD="${PRJ_NAME}_fpm_prd"
 
 
-xport LOG_DIR_UNIT_PRD="${LOG_DIR}/unit_prd"
+export LOG_DIR_UNIT_PRD="${LOG_DIR}/unit_prd"
 
 # Security
 export DEFAULT_PASSWD="P@ssw0rd"
@@ -107,6 +109,19 @@ export MAX_UPLOAD='128M'
 export PHP_MAX_FILE_UPLOAD='128'
 export PHP_MAX_POST='128M'
 
+function join_by() {
+    local d=$1
+    shift
+    echo -n "$1"
+    shift
+    printf "%s" "${@/#/$d}"
+}
+
+function get_local_ip() {
+    local ETH=$( ((ifconfig -s | awk '$11 ~ /^[^L]*R[^L]*$/ { print $1 }') && (ifconfig -s | awk '$11 ~ /R/ { print $1 }')) | head -n 1 )
+    ((ifconfig ${ETH} | grep -P '\binet\b' | awk '{ print $2 }') && (ifconfig lo | grep -P '\binet\b' | awk '{ print $2 }')) | head -n 1
+}
+
 function LSB() {
     lsb_release -s -c
 }
@@ -118,3 +133,5 @@ function RELEASE() {
 function escaped_htdocs_dir() {
     echo ${HTDOCS_DIR} | sed -r 's/\//\\\//g'
 }
+
+set -x

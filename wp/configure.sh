@@ -112,8 +112,9 @@ function configure_openssh() {
 }
 
 function configure_hosts() {
-    sudo sed --in-place "s/127\.0\.0\.1\s+${PRJ_DOMAIN}//g" /etc/hosts
-    echo "127.0.0.1 ${PRJ_DOMAIN}" | sudo tee -a /etc/hosts > /dev/null
+    local IP=$(get_local_ip)
+    sudo sed -r --in-place "/\\s+${PRJ_DOMAIN}/d" /etc/hosts
+    echo "${IP} ${PRJ_DOMAIN}" | sudo tee -a /etc/hosts > /dev/null
 }
 
 function setup_users_groups() {
@@ -194,6 +195,8 @@ function setup_folders() {
 function generate_cert() {
     # https://www.opennet.ru/base/sec/ssl_cert.txt.html
 
+    echo -e "subjectAltName=DNS:$(join_by ',DNS:' ${PRJ_DOMAINS[@]})" > ${CERT_DIR_NGINX}/extfile.ini
+
     # ЦЕНТР СЕРТИФИКАЦИИ: сертификат + приватный ключ
     [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt ]] || openssl req -new -newkey rsa:1024 -nodes \
         -keyout ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
@@ -203,27 +206,26 @@ function generate_cert() {
         -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt
 
     # WEB-сервер: сертификат + приватный ключ
-    for DOMAIN in ${PRJ_DOMAINS[@]}
-    do
-        [[ -f ${CERT_DIR_NGINX}/${DOMAIN}_server.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
-            -keyout ${CERT_DIR_NGINX}/${DOMAIN}_server.key \
-            -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-            -out ${CERT_DIR_NGINX}/${DOMAIN}_server.csr
+    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key \
+        -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Server/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
+        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.csr
 
-        # Подписываем сертификат WEB-сервера нашим центром сертификации
-        [[ -f ${CERT_DIR_NGINX}/${DOMAIN}_server.pem ]] || openssl x509 -req -days 10950 \
-            -in ${CERT_DIR_NGINX}/${DOMAIN}_server.csr \
-            -CA ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt \
-            -CAkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
-            -set_serial 0x`openssl rand -hex 16` \
-            -sha256 \
-            -out ${CERT_DIR_NGINX}/${DOMAIN}_server.pem
-    done
+    # Подписываем сертификат WEB-сервера нашим центром сертификации
+    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem ]] || openssl x509 -req -days 10950 \
+        -in ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.csr \
+        -CA ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt \
+        -CAkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
+        -set_serial 0x`openssl rand -hex 16` \
+        -sha256 \
+        -extfile ${CERT_DIR_NGINX}/extfile.ini \
+        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem
 
     # КЛИЕНТ: сертификат + приватный ключ
     [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
         -keyout ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.key \
         -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
+        -extfile ${CERT_DIR_NGINX}/extfile.ini \
         -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.csr
 
     # Подписываем клиентский сертификат нашим центром сертификации.
@@ -234,6 +236,7 @@ function generate_cert() {
         -CAkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
         -set_serial 0x`openssl rand -hex 16` \
         -sha256 \
+        -extfile ${CERT_DIR_NGINX}/extfile.ini \
         -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem
 
     #  Создание сертфиката в формате PKCS#12 для браузеров
@@ -242,6 +245,7 @@ function generate_cert() {
         -inkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.key \
         -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
         -passout pass: \
+        -extfile ${CERT_DIR_NGINX}/extfile.ini \
         -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.p12
 }
 
@@ -538,16 +542,6 @@ function configure_nginx() {
 
 
     cat << EOF | sudo tee /etc/nginx/conf.d/10_${PRJ_NAME}-ssl_settings.conf > /dev/null
-        ## SSL Settings
-        ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
-        ssl_prefer_server_ciphers on;
-
-        ssl_certificate     ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem;
-        ssl_certificate_key ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key;
-        ssl_trusted_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
-        ssl_client_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem;
-        ssl_stapling on;
-        ssl_verify_client optional;
 EOF
 
     RESTRICTIONS=<<EOF
@@ -592,6 +586,21 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
             root ${HTDOCS_DIR};
             index index.php;
 
+            ## SSL Settings
+            ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
+            ssl_prefer_server_ciphers on;
+
+            ssl_certificate     ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem;
+            ssl_certificate_key ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key;
+            ssl_trusted_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
+            ssl_client_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
+            ssl_verify_client optional;
+            #ssl_stapling on;
+            #ssl_stapling_verify        on;
+
+            #ssl_stapling               on;
+            #ssl_trusted_certificate    /etc/nginx/certs/startssl.stapling.crt;
+
             location @index_php_adm {
                 #try_files \$uri =404;
 
@@ -606,6 +615,16 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
                 fastcgi_param  DB_NAME "${DB_NAME_ADM}";
                 fastcgi_param  DB_USER "${DB_USER_ADM}";
                 fastcgi_param  DB_PASSWORD "${DB_PASSWORD_ADM}";
+
+                fastcgi_param  READ_ONLY "1";
+                fastcgi_param  SELECT_ONLY "1";
+                fastcgi_param  OFFLINE "1";
+                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_i_dn";
+                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_s_dn";
+                fastcgi_param  SSL_CLIENT_VERIFY "\$ssl_client_verify";
+                fastcgi_param  SSL_SERVER_NAME "\$ssl_server_name";
+                fastcgi_param  SSL_SESSION_ID "\$ssl_session_id";
+                fastcgi_param  SSL_SESSION_REUSED "\$ssl_session_reused";
 
                 #gzip on;
                 #gzip_comp_level 4;
@@ -626,6 +645,16 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
                 fastcgi_param  DB_NAME "${DB_NAME_PRD}";
                 fastcgi_param  DB_USER "${DB_USER_PRD}";
                 fastcgi_param  DB_PASSWORD "${DB_PASSWORD_PRD}";
+
+                fastcgi_param  READ_ONLY "1";
+                fastcgi_param  SELECT_ONLY "1";
+                fastcgi_param  OFFLINE "1";
+                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_i_dn";
+                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_s_dn";
+                fastcgi_param  SSL_CLIENT_VERIFY "\$ssl_client_verify";
+                fastcgi_param  SSL_SERVER_NAME "\$ssl_server_name";
+                fastcgi_param  SSL_SESSION_ID "\$ssl_session_id";
+                fastcgi_param  SSL_SESSION_REUSED "\$ssl_session_reused";
 
                 #gzip on;
                 #gzip_comp_level 4;
@@ -732,15 +761,16 @@ EOF
 configure_permissions
 
 # configure_openssh
-# configure_hosts
+configure_hosts
 setup_users_groups
 setup_folders
-# generate_cert
+generate_cert
 
 configure_fpm
 configure_fpm_adm
 configure_fpm_prd
 configure_nginx
 create_index_php
+
 
 
