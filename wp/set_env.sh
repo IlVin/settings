@@ -11,19 +11,22 @@ export PRJ_NAME='wp'
 export PRJ_DOMAINS=("${PRJ_NAME}.iv77msk.ru" "www.${PRJ_NAME}.iv77msk.ru")
 export PRJ_DOMAIN=${PRJ_DOMAINS[0]}
 export PRJ_EMAIL="ilvin@mail.ru"
-export PRJ_PREFIX="/www"
-export PRJ_ROOT="${PRJ_PREFIX}/${PRJ_NAME}"
-export PRJ_OWNER="${PRJ_NAME}-www"
-export PRJ_GROUP="${PRJ_NAME}-www"
-export CACHE_DIR="${PRJ_ROOT}/cache"
-export HTDOCS_DIR="${PRJ_ROOT}/htdocs"
-export WP_DIR="${HTDOCS_DIR}"
-export DB_DIR="${PRJ_ROOT}/mysql"
-export SOFT_DIR="${PRJ_ROOT}/soft"
 
-export LOG_DIR="${PRJ_ROOT}/logs"
-export RUN_DIR="${PRJ_ROOT}/run"
-export CONF_DIR="${PRJ_ROOT}/conf"
+export PRJ_ROOT="/${PRJ_NAME}"
+
+export CERT_DIR="${PRJ_ROOT}/cert"
+
+export SITE_ROOT="${PRJ_ROOT}/site"
+export HTDOCS_DIR="${SITE_ROOT}/htdocs"
+export LOG_DIR="${SITE_ROOT}/logs"
+
+export WP_DIR="${HTDOCS_DIR}"           # Папка, в которую WP сетапить (совпадает с ${HTDOCS_DIR})
+export DB_DIR="${PRJ_ROOT}/mysql"
+export SOFT_DIR="${PRJ_ROOT}/soft"      # Папка, в которую скачивается софт, например WP
+
+export CACHE_DIR="${PRJ_ROOT}/cache"    # Кэш nginx
+export RUN_DIR="${PRJ_ROOT}/run"        # Папка для UNIX сокетов
+export CONF_DIR="${PRJ_ROOT}/conf"      # Папка для конфигов сайта
 
 export CONF_NGINX="${CONF_DIR}/nginx.conf"
 export CONF_NGINX_ADM="${CONF_DIR}/nginx_adm.conf"
@@ -55,23 +58,7 @@ export PING_RESPONSE_NGINX="${PRJ_NAME}-pong_nginx"
 export PING_RESPONSE_FPM_ADM="${PRJ_NAME}-pong_fpm_adm"
 export PING_RESPONSE_FPM_PRD="${PRJ_NAME}-pong_fpm_prd"
 
-export CERT_DIR="${PRJ_ROOT}/cert"
-export CERT_DIR_NGINX="${CERT_DIR}/nginx"
-export CERT_DIR_UNIT_ADM="${STATE_DIR_UNIT_ADM}/certs"
-export CERT_DIR_UNIT_PRD="${STATE_DIR_UNIT_PRD}/certs"
-export CERT_DIR_FPM_ADM="${STATE_DIR_FPM_ADM}/certs"
-export CERT_DIR_FPM_PRD="${STATE_DIR_FPM_PRD}/certs"
-
 export PORT_NGINX="80"
-
-export HOSTNAME_NGINX="${PRJ_NAME}_nginx"
-export HOSTNAME_UNIT_ADM="${PRJ_NAME}_unit_adm"
-export HOSTNAME_UNIT_PRD="${PRJ_NAME}_unit_prd"
-export HOSTNAME_FPM_ADM="${PRJ_NAME}_fpm_adm"
-export HOSTNAME_FPM_PRD="${PRJ_NAME}_fpm_prd"
-
-
-export LOG_DIR_UNIT_PRD="${LOG_DIR}/unit_prd"
 
 # Security
 export DEFAULT_PASSWD="P@ssw0rd"
@@ -89,18 +76,27 @@ export DB_NAME_ADM="${PRJ_NAME}_adm"
 export DB_USER_ADM="${PRJ_NAME}-adm"
 export DB_PASSWORD_ADM=${DEFAULT_PASSWD}
 
-export USER_NGINX='nginx'
-export GROUP_NGINX=${PRJ_GROUP}
+# Установки пользователей
+# Политика безопасности:
+# 1) Каждый пользователь пишет файлы от своего имени.
+# 2) Все пользователи принадлежат одной группе.
+# 3) Пользователи из одной группы распоряжаются файлами как своими, т.е. UMASK = 0002
+# 4) Публичный FPM не принадлежит общей группе, т.е. имеет режим READ_ONLY на файлы
+# 5) Публичному FPM файлы сайта монтируются в READ_ONLY режиме
+# 6) Публичный FPM делает chroot
+# 7) Публичному FPM выдан доступ к БД в SELECT_ONLY режиме
 
-export USER_ADM="${PRJ_NAME}-adm"
-export GROUP_ADM=${PRJ_GROUP}
-export USER_PRD="${PRJ_NAME}-prd"
-export GROUP_PRD=${PRJ_GROUP}
+export PRJ_OWNER="${PRJ_NAME}-www"
+export PRJ_GROUP="${PRJ_NAME}-www"
+
+export USER_NGINX="${PRJ_NAME}-nginx"
+export GROUP_NGINX="${USER_NGINX}
 
 export USER_FPM_ADM="${PRJ_NAME}-fpm-adm"
 export GROUP_FPM_ADM=${PRJ_GROUP}
+
 export USER_FPM_PRD="${PRJ_NAME}-fpm-prd"
-export GROUP_FPM_PRD=${PRJ_GROUP}
+export GROUP_FPM_PRD=${USER_FPM_PRD}
 
 export PHPVER='7.2'
 export TIMEZONE='Europe/Moscow'
@@ -128,10 +124,6 @@ function LSB() {
 
 function RELEASE() {
     lsb_release -r | sed -r 's/Release:\s+//'
-}
-
-function escaped_htdocs_dir() {
-    echo ${HTDOCS_DIR} | sed -r 's/\//\\\//g'
 }
 
 set -x

@@ -117,136 +117,117 @@ function configure_hosts() {
     echo "${IP} ${PRJ_DOMAIN}" | sudo tee -a /etc/hosts > /dev/null
 }
 
+function setup_group() {
+    local grp=$1
+    if [ `getent group ${grp}` ]
+    then
+        echo "Group ${grp} exists"
+    else
+        sudo groupadd ${grp}
+    fi
+}
+
+function setup_user_group() {
+    local user=$1
+    local group=$2
+
+    setup_group ${group}
+
+    if [[ $(id -u ${user} 2>/dev/null) > 0 ]]
+    then
+        echo "User ${user} exists"
+        sudo usermod -a -G ${group} ${owner}
+    else
+        sudo useradd -d /dev/null -s /sbin/nologin -g ${group} ${user}
+    fi
+}
+
 function setup_users_groups() {
-    for grp in ${PRJ_GROUP}
-    do
-        if [ `getent group ${grp}` ]
-        then
-            echo "Group ${grp} exists"
-        else
-            sudo groupadd ${grp}
-        fi
-        for owner in ${PRJ_OWNER} ${USER} $(whoami)
-        do
-            if [[ $(id -u ${owner} 2>/dev/null) > 0 ]]
-            then
-                echo "User ${owner} exists"
-            else
-                sudo useradd -d /dev/null -s /sbin/nologin -g ${PRJ_GROUP} ${owner}
-            fi
-            sudo usermod -a -G ${grp} ${owner}
-        done
-    done
+    setup_user_group ${PRJ_OWNER} ${PRJ_GROUP}
+    setup_user_group ${USER} ${PRJ_GROUP}
+    setup_user_group $(whoami) ${PRJ_GROUP}
 
-    for grp in ${GROUP_PRD}
-    do
-        if [ `getent group ${grp}` ]
-        then
-            echo "Group ${grp} exists"
-        else
-            sudo groupadd ${grp}
-        fi
-        for user in ${USER_PRD}
-        do
-            if [[ $(id -u ${user} 2>/dev/null) > 0 ]]
-            then
-                echo "User ${user} exists"
-            else
-                sudo useradd -d /dev/null -s /sbin/nologin -g ${grp} ${user}
-            fi
-        done
-    done
-
-    for grp in ${GROUP_FPM_PRD}
-    do
-        if [ `getent group ${grp}` ]
-        then
-            echo "Group ${grp} exists"
-        else
-            sudo groupadd ${grp}
-        fi
-        for user in ${USER_FPM_PRD}
-        do
-            if [[ $(id -u ${user} 2>/dev/null) > 0 ]]
-            then
-                echo "User ${user} exists"
-            else
-                sudo useradd -d /dev/null -s /sbin/nologin -g ${grp} ${user}
-            fi
-        done
-    done
+    setup_user_group ${USER_NGINX} ${GROUP_NGINX}
+    setup_user_group ${USER_FPM_PRD} ${GROUP_FPM_PRD}
+    setup_user_group ${USER_FPM_ADM} ${GROUP_FPM_ADM}
 }
 
 function setup_folders() {
-    for VAR in PRJ_ROOT HTDOCS_DIR WP_DIR DB_DIR SOFT_DIR CACHE_DIR CERT_DIR LOG_DIR RUN_DIR CONF_DIR
-    do
-        sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!VAR}
-        for SUFFIX in NGINX BASE FPM FPM_ADM FPM_PRD
-        do
-            DIR_VAR="${VAR}_${SUFFIX}"
-            if [[ ${!DIR_VAR} != '' ]]
-            then
-                sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${!DIR_VAR}
-            fi
-        done
-    done
+
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${PRJ_ROOT}
+
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${SITE_ROOT}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${HTDOCS_DIR}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${WP_DIR}
+
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${LOG_DIR}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${CERT_DIR}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${DB_DIR}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${SOFT_DIR}
+
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${CACHE_DIR}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${RUN_DIR}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${CONF_DIR}
+
+    sudo install -g ${GROUP_FPM_ADM} -o ${USER_FPM_ADM} -d -m a+rwx,o-w,g+s ${ROOT_FPM_ADM}
+    sudo install -g ${GROUP_FPM_PRD} -o ${USER_FPM_PRD} -d -m a+rwx,o-w,g+s ${ROOT_FPM_PRD}
 }
 
 function generate_cert() {
     # https://www.opennet.ru/base/sec/ssl_cert.txt.html
 
-    echo -e "subjectAltName=DNS:$(join_by ',DNS:' ${PRJ_DOMAINS[@]})" > ${CERT_DIR_NGINX}/extfile.ini
+    echo -e "subjectAltName=DNS:$(join_by ',DNS:' ${PRJ_DOMAINS[@]})" > ${CERT_DIR}/extfile.ini
 
     # ЦЕНТР СЕРТИФИКАЦИИ: сертификат + приватный ключ
-    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt ]] || openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
+    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt ]] || openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
         -x509 \
         -days 10000 \
         -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ CA/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt
 
     # WEB-сервер: сертификат + приватный ключ
-    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key \
+    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_server.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_server.key \
         -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Server/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.csr
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_server.csr
 
     # Подписываем сертификат WEB-сервера нашим центром сертификации
-    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem ]] || openssl x509 -req -days 10950 \
-        -in ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.csr \
-        -CA ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt \
-        -CAkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
+    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_server.pem ]] || openssl x509 -req -days 10950 \
+        -in ${CERT_DIR}/${PRJ_DOMAIN}_server.csr \
+        -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
+        -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
         -set_serial 0x`openssl rand -hex 16` \
         -sha256 \
-        -extfile ${CERT_DIR_NGINX}/extfile.ini \
-        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem
+        -extfile ${CERT_DIR}/extfile.ini \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_server.pem
 
     # КЛИЕНТ: сертификат + приватный ключ
-    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.key \
+    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_client.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
         -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -extfile ${CERT_DIR_NGINX}/extfile.ini \
-        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.csr
+        -extfile ${CERT_DIR}/extfile.ini \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.csr
 
     # Подписываем клиентский сертификат нашим центром сертификации.
     # openssl ca -config ca.config -in client01.csr -out client01.crt -batch
-    [[ -f ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem ]] || openssl x509 -req -days 10950 \
-        -in ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.csr \
-        -CA ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt \
-        -CAkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.key \
+    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_client.pem ]] || openssl x509 -req -days 10950 \
+        -in ${CERT_DIR}/${PRJ_DOMAIN}_client.csr \
+        -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
+        -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
         -set_serial 0x`openssl rand -hex 16` \
         -sha256 \
-        -extfile ${CERT_DIR_NGINX}/extfile.ini \
-        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem
+        -extfile ${CERT_DIR}/extfile.ini \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.pem
 
     #  Создание сертфиката в формате PKCS#12 для браузеров
     openssl pkcs12 -export \
-        -in ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.pem \
-        -inkey ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.key \
+        -in ${CERT_DIR}/${PRJ_DOMAIN}_client.pem \
+        -inkey ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
         -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
         -passout pass: \
-        -extfile ${CERT_DIR_NGINX}/extfile.ini \
-        -out ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_client.p12
+        -extfile ${CERT_DIR}/extfile.ini \
+        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.p12
 }
 
 # https://habr.com/ru/post/316802/
@@ -338,7 +319,7 @@ function make_sandbox() {
     done
 
     # Create project folders
-    for make_sandbox_folder in ${PRJ_PREFIX} ${PRJ_ROOT}
+    for make_sandbox_folder in ${PRJ_ROOT}
     do
         sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
     done
@@ -590,10 +571,10 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
             ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
             ssl_prefer_server_ciphers on;
 
-            ssl_certificate     ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.pem;
-            ssl_certificate_key ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_server.key;
-            ssl_trusted_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
-            ssl_client_certificate ${CERT_DIR_NGINX}/${PRJ_DOMAIN}_ca.crt;
+            ssl_certificate     ${CERT_DIR}/${PRJ_DOMAIN}_server.pem;
+            ssl_certificate_key ${CERT_DIR}/${PRJ_DOMAIN}_server.key;
+            ssl_trusted_certificate ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt;
+            ssl_client_certificate ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt;
             ssl_verify_client optional;
             #ssl_stapling on;
             #ssl_stapling_verify        on;
