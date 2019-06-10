@@ -94,8 +94,8 @@ function configure_permissions() {
     done
 
     sudo sed -i -r \
-        -e "s|^(# php${PHPVER}-fpm - The PHP FastCGI Process Manager\s*)\$|\1 with umask\numask ${UMASK}|g" \
-        -e "s|^umask\s+\d+.*|umask ${UMASK}|g" \
+        -e "/^\s*umask\s+[0-9]+/d" \
+        -e "s|^(# php${PHPVER}-fpm - The PHP FastCGI Process Manager\s*)\$|\1\numask ${UMASK}|g" \
     /etc/init/php${PHPVER}-fpm.conf
 
     cat /lib/systemd/system/php${PHPVER}-fpm.service \
@@ -136,7 +136,7 @@ function setup_user_group() {
     if [[ $(id -u ${user} 2>/dev/null) > 0 ]]
     then
         echo "User ${user} exists"
-        sudo usermod -a -G ${group} ${owner}
+        sudo usermod -a -G ${group} ${user}
     else
         sudo useradd -d /dev/null -s /sbin/nologin -g ${group} ${user}
     fi
@@ -150,6 +150,10 @@ function setup_users_groups() {
     setup_user_group ${USER_NGINX} ${GROUP_NGINX}
     setup_user_group ${USER_FPM_PRD} ${GROUP_FPM_PRD}
     setup_user_group ${USER_FPM_ADM} ${GROUP_FPM_ADM}
+
+    setup_user_group $(whoami) ${GROUP_NGINX}
+    setup_user_group $(whoami) ${GROUP_FPM_PRD}
+    setup_user_group $(whoami) ${GROUP_FPM_ADM}
 }
 
 function setup_folders() {
@@ -179,12 +183,12 @@ function generate_cert() {
     echo -e "subjectAltName=DNS:$(join_by ',DNS:' ${PRJ_DOMAINS[@]})" > ${CERT_DIR}/extfile.ini
 
     # ЦЕНТР СЕРТИФИКАЦИИ: сертификат + приватный ключ
-    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt ]] || openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+    [[ -f ${CERT_CA_CRT} ]] || openssl req -new -newkey rsa:1024 -nodes \
+        -keyout ${CERT_CA_KEY} \
         -x509 \
         -days 10000 \
-        -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ CA/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt
+        -subj /C=RU/ST=Msk/L=Msk/O=IlVin/OU=IlVin\ CA/CN=iv77msk.ru/emailAddress=info@iv77msk.ru \
+        -out ${CERT_CA_CRT}
 
     # WEB-сервер: сертификат + приватный ключ
     [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_server.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
@@ -195,8 +199,8 @@ function generate_cert() {
     # Подписываем сертификат WEB-сервера нашим центром сертификации
     [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_server.pem ]] || openssl x509 -req -days 10950 \
         -in ${CERT_DIR}/${PRJ_DOMAIN}_server.csr \
-        -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
-        -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+        -CA ${CERT_CA_CRT} \
+        -CAkey ${CERT_CA_KEY} \
         -set_serial 0x`openssl rand -hex 16` \
         -sha256 \
         -extfile ${CERT_DIR}/extfile.ini \
@@ -206,15 +210,14 @@ function generate_cert() {
     [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_client.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
         -keyout ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
         -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -extfile ${CERT_DIR}/extfile.ini \
         -out ${CERT_DIR}/${PRJ_DOMAIN}_client.csr
 
     # Подписываем клиентский сертификат нашим центром сертификации.
     # openssl ca -config ca.config -in client01.csr -out client01.crt -batch
     [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_client.pem ]] || openssl x509 -req -days 10950 \
         -in ${CERT_DIR}/${PRJ_DOMAIN}_client.csr \
-        -CA ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt \
-        -CAkey ${CERT_DIR}/${PRJ_DOMAIN}_ca.key \
+        -CA ${CERT_CA_CRT} \
+        -CAkey ${CERT_CA_KEY} \
         -set_serial 0x`openssl rand -hex 16` \
         -sha256 \
         -extfile ${CERT_DIR}/extfile.ini \
@@ -226,8 +229,9 @@ function generate_cert() {
         -inkey ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
         -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
         -passout pass: \
-        -extfile ${CERT_DIR}/extfile.ini \
         -out ${CERT_DIR}/${PRJ_DOMAIN}_client.p12
+
+    rm -f ${CERT_DIR}/*.csr
 }
 
 # https://habr.com/ru/post/316802/
@@ -254,24 +258,6 @@ function configure_fpm() {
     [[ -f /etc/php/${PHPVER}/fpm/pool.d/www.conf ]] && sudo mv /etc/php/${PHPVER}/fpm/pool.d/www.conf /etc/php/${PHPVER}/fpm/example_pool.conf
 }
 
-function install_user() {
-    install_user_user=$1
-    install_user_group=$2
-    if [ `getent group ${install_user_group}` ]
-    then
-        echo "Group ${install_user_group} exists"
-    else
-        sudo groupadd ${install_user_group}
-    fi
-    if [[ $(id -u ${install_user_user} 2>/dev/null) > 0 ]]
-    then
-        echo "User ${install_user_user} exists"
-        sudo usermod -a -G ${install_user_group} ${install_user_user}
-    else
-        sudo useradd -d /dev/null -s /sbin/nologin -g ${install_user_group} ${install_user_user}
-    fi
-}
-
 function build_root_template() {
     echo "BUILD ROOT_TEMPLATE"
 
@@ -280,64 +266,6 @@ function build_root_template() {
     do
         sudo install -g ${PRJ_OWNER} -o ${PRJ_GROUP} -d -m a+rwx,o-w,g+s ${ROOT_TEMPLATE}${build_root_template_folder}
     done
-}
-
-function make_sandbox() {
-    make_sandbox_root=$1
-    make_sandbox_user=$2
-    make_sandbox_group=$3
-    make_sandbox_mount_ro_folders=$4
-    make_sandbox_mount_rw_folders=$5
-
-    make_sandbox_mount_ro_files=(/dev/null /dev/random /dev/urandom /etc/localtime /etc/hosts /etc/resolv.conf)
-
-    # UMOUNT folders and files
-    for make_sandbox_file in ${make_sandbox_mount_ro_files[@]} ${make_sandbox_mount_ro_folders[@]} ${make_sandbox_mount_rw_folders[@]}
-    do
-        sudo umount -f ${make_sandbox_root}${make_sandbox_file}
-    done
-
-    [[ -d ${make_sandbox_root} || -f ${make_sandbox_root} ]] && sudo rm -rf ${make_sandbox_root}
-
-    # Create system RO folders
-    for make_sandbox_folder in / /etc /dev /usr /usr/share /usr/share/zoneinfo
-    do
-        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
-    done
-
-    # MOUNT system RO files
-    for make_sandbox_file in ${make_sandbox_mount_ro_files[@]}
-    do
-        sudo -u ${make_sandbox_user} -g ${make_sandbox_group} touch ${make_sandbox_root}${make_sandbox_file}
-        sudo mount -o bind,ro,noexec ${make_sandbox_file} ${make_sandbox_root}${make_sandbox_file}
-    done
-
-    # Create system RW folders
-    for make_sandbox_folder in /tmp
-    do
-        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,g+s ${make_sandbox_root}${make_sandbox_folder}
-    done
-
-    # Create project folders
-    for make_sandbox_folder in ${PRJ_ROOT}
-    do
-        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
-    done
-
-    # MOUNT RO folders
-    for make_sandbox_folder in ${make_sandbox_mount_ro_folders[@]}
-    do
-        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,go-w,g+s ${make_sandbox_root}${make_sandbox_folder}
-        sudo mount -o bind,ro,noexec ${make_sandbox_folder} ${make_sandbox_root}${make_sandbox_folder}
-    done
-
-    # MOUNT RW folders
-    for make_sandbox_folder in ${make_sandbox_mount_rw_folders[@]}
-    do
-        sudo install -g ${make_sandbox_group} -o ${make_sandbox_user} -d -m a+rwx,o-w,g+s ${make_sandbox_root}${make_sandbox_folder}
-        sudo mount -o bind,rw,noexec ${make_sandbox_folder} ${make_sandbox_root}${make_sandbox_folder}
-    done
-
 }
 
 function make_root_fpm() {
@@ -353,7 +281,7 @@ function make_root_fpm() {
     local file
 
     # Delete root folder if exists
-    cat /etc/mtab | cut -f 2 -d ' ' | grep "${root}" | xargs sudo umount -f
+    cat /etc/mtab | cut -f 2 -d ' ' | grep "${root}" | xargs -r sudo umount -f
     [[ -d ${root} || -f ${root} ]] && sudo rm -rf ${root}
 
     # Create system folders
@@ -411,22 +339,7 @@ function make_root_fpm() {
 
 function configure_fpm_adm() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    install_user ${USER_FPM_ADM} ${GROUP_FPM_ADM}
-
-#    # make_root_fpm
-        # root
-        # user
-        # group
-        # make_folder
-        # mount_ro_folders
-        # mount_rw_folders
-#    make_root_fpm \
-#        ${ROOT_FPM_ADM} \
-#        ${USER_FPM_ADM} \
-#        ${GROUP_FPM_ADM} \
-#        "" \
-#        "" \
-#        "${LOG_DIR_FPM_ADM} ${HTDOCS_DIR}"
+    setup_user_group ${USER_FPM_ADM} ${GROUP_FPM_ADM}
 
     sudo sed -i -r \
         -e "s|^\s*\[www\]|[${PRJ_NAME}_adm]|g" \
@@ -460,7 +373,7 @@ function configure_fpm_adm() {
 
 function configure_fpm_prd() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    install_user ${USER_FPM_PRD} ${GROUP_FPM_PRD}
+    setup_user_group ${USER_FPM_PRD} ${GROUP_FPM_PRD}
 
     # make_root_fpm
         # root
@@ -508,7 +421,7 @@ function configure_fpm_prd() {
 }
 
 function configure_nginx() {
-    install_user ${USER_NGINX} ${GROUP_NGINX}
+    setup_user_group ${USER_NGINX} ${GROUP_NGINX}
 
     sudo sed -r -i \
         -e "s|^#*(\s*)#*user\s+.*|user ${USER_NGINX};\n|;" \
@@ -573,8 +486,8 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
 
             ssl_certificate     ${CERT_DIR}/${PRJ_DOMAIN}_server.pem;
             ssl_certificate_key ${CERT_DIR}/${PRJ_DOMAIN}_server.key;
-            ssl_trusted_certificate ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt;
-            ssl_client_certificate ${CERT_DIR}/${PRJ_DOMAIN}_ca.crt;
+            ssl_trusted_certificate ${CERT_CA_CRT};
+            ssl_client_certificate ${CERT_CA_CRT};
             ssl_verify_client optional;
             #ssl_stapling on;
             #ssl_stapling_verify        on;
@@ -739,17 +652,18 @@ EOF
 #purge_web
 #install_web
 
-configure_permissions
+#configure_permissions
 
-# configure_openssh
-configure_hosts
-setup_users_groups
-setup_folders
+## configure_openssh
+#configure_hosts
+#setup_users_groups
+#setup_folders
+rm -f ${CERT_DIR}/*
 generate_cert
 
-configure_fpm
-configure_fpm_adm
-configure_fpm_prd
+#configure_fpm
+#configure_fpm_adm
+#configure_fpm_prd
 configure_nginx
 create_index_php
 

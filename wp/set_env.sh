@@ -15,6 +15,8 @@ export PRJ_EMAIL="ilvin@mail.ru"
 export PRJ_ROOT="/${PRJ_NAME}"
 
 export CERT_DIR="${PRJ_ROOT}/cert"
+export CERT_CA_CRT="${CERT_DIR}/IlVin_CA.crt"
+export CERT_CA_KEY="${CERT_DIR}/IlVin_CA.key"
 
 export SITE_ROOT="${PRJ_ROOT}/site"
 export HTDOCS_DIR="${SITE_ROOT}/htdocs"
@@ -90,7 +92,7 @@ export PRJ_OWNER="${PRJ_NAME}-www"
 export PRJ_GROUP="${PRJ_NAME}-www"
 
 export USER_NGINX="${PRJ_NAME}-nginx"
-export GROUP_NGINX="${USER_NGINX}
+export GROUP_NGINX="${USER_NGINX}"
 
 export USER_FPM_ADM="${PRJ_NAME}-fpm-adm"
 export GROUP_FPM_ADM=${PRJ_GROUP}
