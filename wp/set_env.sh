@@ -2,6 +2,10 @@
 
 set +x
 
+alias sudo='sudo -S'
+
+export SET_ENV='INCLUDED'
+
 export UMASK='0002'
 
 umask ${UMASK}
@@ -126,6 +130,24 @@ function LSB() {
 
 function RELEASE() {
     lsb_release -r | sed -r 's/Release:\s+//'
+}
+
+function start_nginx() {
+    sudo service nginx start
+    sudo systemctl status nginx.service
+}
+
+function stop_nginx() {
+    sudo service nginx stop
+}
+
+function start_fpm() {
+    sudo service php7.2-fpm start
+    sudo systemctl status php7.2-fpm.service
+}
+
+function stop_fpm() {
+    sudo service php7.2-fpm stop
 }
 
 set -x
