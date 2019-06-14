@@ -2,17 +2,21 @@
 
 set -x
 
-echo "ENTER PASSWORD FOR sudo:"
-read PASSWD
+## Подсоединяемся к удаленному хосту sudo юзером и устанавливаем сервисного пользователя
+#echo "ENTER PASSWORD FOR sudo:"
+#read PASSWD
+#ssh ilvin@wp "echo '${PASSWD}' | sudo -Sv && bash -s" -- < ./iv77msk_add.sh --arguments
 
-SUDO_WRAPPER=$(cat << EOF
-(echo ${PASSWD} | sudo -S echo ilvin  ALL=\\(ALL\\) NOPASSWD: ALL | sudo -S tee /etc/sudoers.d/ilvin) \
-&& (echo ${PASSWD} | sudo -S chmod 0440 /etc/sudoers.d/ilvin);
-EOF
-)
+# Запускаем скрипт установки из под сервисного пользователя
+cat ./set_env.sh ./configure.sh | ssh -A iv77msk_ru@wp 'bash -s'
 
-(echo "${SUDO_WRAPPER}" && cat ./set_env.sh ./configure.sh) \
-| ssh ilvin@wp 'bash -s'
+#SUDO_WRAPPER=$(cat << EOF
+#(echo ${PASSWD} | sudo -S echo ilvin  ALL=\\(ALL\\) NOPASSWD: ALL | sudo -S tee /etc/sudoers.d/ilvin) \
+#&& (echo ${PASSWD} | sudo -S chmod 0440 /etc/sudoers.d/ilvin);
+#EOF
+#)
+#
+#(echo "${SUDO_WRAPPER}" && cat ./set_env.sh ./configure.sh) \
+#| ssh ilvin@wp 'bash -s'
 
 
-#ssh ADDRESS 'echo "rootpass" | sudo -Sv && bash -s' -- < BASH_FILE --arguments

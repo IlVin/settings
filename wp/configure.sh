@@ -109,38 +109,6 @@ function configure_permissions() {
     sudo systemctl daemon-reload
 }
 
-function configure_openssh() {
-    [ -d ~/.ssh ] || mkdir ~/.ssh
-    [ -d ~/.ssh ] && chmod 700 ~/.ssh
-
-    # SSH Agent setup
-    sudo sed -i -r \
-        -e 's/#?\s*(PubkeyAuthentication)\s+(yes|no)/\1 yes/g' \
-        -e 's/#?\s*(RSAAuthentication)\s+(yes|no)/\1 yes/g' \
-        -e 's/#?\s*(PasswordAuthentication)\s+(yes|no)/\1 no/g' \
-        -e 's/#?\s*(AllowAgentForwarding)\s+(yes|no)/\1 yes/g' \
-        -e 's/#?\s*(X11Forwarding)\s+(yes|no)/\1 yes/g' \
-        -e 's/#?\s*(UsePAM)\s+(yes|no)/\1 yes/g' \
-        -e 's/#?\s*(UseLogin)\s+(yes|no)/\1 no/g' \
-        -e 's/#?\s*(TCPKeepAlive)\s+(yes|no)/\1 yes/g' \
-    /etc/ssh/sshd_config
-
-    mkdir -p ${HOME}/.ssh
-    chmod a-rwx,u+rwx ${HOME}/.ssh
-    if [[ !(-f ${HOME}/.ssh/authorized_keys) || ($(grep 'rsa-key-IlVin-20150714' ${HOME}/.ssh/authorized_keys | wc -l) == 0) ]]
-    then
-    cat << EOF | tee -a ${HOME}/.ssh/authorized_keys
-ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEAmiXomW7qcG3PJqhJeNs+NmmNrwN3lrBwx2hR55vS+Q5l5MR5eUdjB94ou+ag69PtVPuslVhJ8cNY4IaNeWog5T9ulSs9vSb9+7pnEws34Vy5Bu0ePE+HXGZ8EHnND4C1ljsbM49n35BxRtrjOeEkFWeNNaKqPqvwutebrg0Bu+LQLZ69xBV0dBpfDZwrsTkDePQKV9E6b26fi+tAmZEVbInT4wHyXXSDmlRlv86oF3WFpyLxKNsZsTcmJMt1Gz5kzJr4fGcAp+kE5Nzhg+E/+QOAKa/b2KPm16jMMUuazI8b6wyTwXKB7WI516gr1DJSlMqKiNQALQQJQv59q/u0jw== rsa-key-IlVin-20150714
-EOF
-    fi
-    chmod a-rwx,u+rw ${HOME}/.ssh/authorized_keys
-    sudo service sshd restart
-
-    # Host for CA certificate manipulation
-    ssh-keygen -R ca.iv77msk.ru
-    ssh-keyscan ca.iv77msk.ru | tee -a ${HOME}/.ssh/known_hosts
-}
-
 function configure_hosts() {
     local IP=$(get_local_ip)
     sudo sed -r --in-place "/\\s+${PRJ_DOMAIN}/d" /etc/hosts
@@ -217,7 +185,7 @@ function generate_cert() {
     [[ -f ${CERT_CA_CRT} ]] || openssl req -new -newkey rsa:1024 -nodes \
         -keyout ${CERT_CA_KEY} \
         -x509 \
-        -days 10000 \
+        -days 36500 \
         -subj /C=RU/ST=Msk/L=Msk/O=IlVin/OU=IlVin\ CA/CN=iv77msk.ru/emailAddress=info@iv77msk.ru \
         -out ${CERT_CA_CRT}
 
@@ -688,7 +656,6 @@ EOF
 
 configure_permissions
 
-configure_openssh
 configure_hosts
 setup_users_groups
 setup_folders
