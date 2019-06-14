@@ -16,11 +16,15 @@ function autoremove() {
 }
 
 function install_base () {
+    echo 'debconf debconf/frontend select Noninteractive' | sudo debconf-set-selections
+    sudo apt-get install -yqq
+
     sudo add-apt-repository universe
     sudo apt-get update -yqq
 
     sudo apt-get install -yqq \
         ca-certificates \
+        dialog \
         apt-utils \
         software-properties-common \
         apt-transport-https
@@ -28,7 +32,6 @@ function install_base () {
     sudo apt-get install -yqq --no-install-recommends --no-install-suggests \
         bash \
         sudo \
-        dialog \
         tzdata \
         locales \
         lsb-core \
@@ -39,7 +42,7 @@ function install_base () {
         net-tools \
         vim \
 
-    sudo apt-get dist-upgrade -yqq --allow-downgrades
+    #sudo apt-get dist-upgrade -yqq --allow-downgrades
 
     # Setup locales
     for LOC in ru_RU en_US
@@ -56,9 +59,13 @@ function install_base () {
 }
 
 function purge_web() {
-    sudo apt purge -yqq nginx*
-    sudo apt purge -yqq php${PHPVER}*
-    sudo apt purge -yqq php-fpm${PHPVER}*
+
+    sudo service nginx stop
+    sudo service php7.2-fpm stop
+
+    sudo apt-get purge -yqq nginx*
+    sudo apt-get purge -yqq php${PHPVER}*
+    sudo apt-get purge -yqq php-fpm${PHPVER}*
 
     [[ -d /etc/php ]] && sudo rm -rf /etc/php
     [[ -d /etc/nginx ]] && sudo rm -rf /etc/nginx
@@ -122,6 +129,7 @@ function setup_group() {
     then
         echo "Group ${grp} exists"
     else
+        echo "Add group ${group}"
         sudo groupadd ${grp}
     fi
 }
@@ -134,22 +142,42 @@ function setup_user_group() {
 
     if [[ $(id -u ${user} 2>/dev/null) > 0 ]]
     then
-        echo "User ${user} exists"
+        echo "Add user ${user} to group ${group}"
         sudo usermod -a -G ${group} ${user}
     else
+        echo "Add user ${user}:${group}"
         sudo useradd -d /dev/null -s /sbin/nologin -g ${group} ${user}
     fi
 }
 
 function setup_users_groups() {
+    for user_for_delete in ${PRJ_OWNER} ${USER_NGINX} ${USER_FPM_PRD} ${USER_FPM_ADM}
+    do
+        if [[ $(id -u ${user_for_delete} 2>/dev/null) > 0 ]]
+        then
+            echo "Delete user ${user_for_delete}"
+            local user_home=$(grep ${user_for_delete} /etc/passwd | cut -d ':' -f 6)
+            sudo userdel ${user_for_delete}
+            [[ -d ${user_home} ]] && sudo rm -rf ${user_home}
+        fi
+    done
+
+    for group_for_delete in ${PRJ_GROUP} ${GROUP_NGINX} ${GROUP_FPM_PRD} ${GROUP_FPM_ADM}
+    do
+        if [ `getent group ${group_for_delete}` ]
+        then
+            echo "Delete group ${group_for_delete}"
+            sudo groupdel ${group_for_delete}
+        fi
+    done
+
     setup_user_group ${PRJ_OWNER} ${PRJ_GROUP}
-    setup_user_group ${USER} ${PRJ_GROUP}
-    setup_user_group $(whoami) ${PRJ_GROUP}
 
     setup_user_group ${USER_NGINX} ${GROUP_NGINX}
     setup_user_group ${USER_FPM_PRD} ${GROUP_FPM_PRD}
     setup_user_group ${USER_FPM_ADM} ${GROUP_FPM_ADM}
 
+    setup_user_group $(whoami) ${PRJ_GROUP}
     setup_user_group $(whoami) ${GROUP_NGINX}
     setup_user_group $(whoami) ${GROUP_FPM_PRD}
     setup_user_group $(whoami) ${GROUP_FPM_ADM}
@@ -650,23 +678,23 @@ EOF
 }
 
 
-#install_base
 #purge_web
+#install_base
 #install_web
 
-configure_permissions
+#configure_permissions
 
-configure_hosts
-setup_users_groups
-setup_folders
-#rm -f ${CERT_DIR}/*
+#configure_hosts
+#setup_users_groups
+#setup_folders
+rm -f ${CERT_DIR}/*
 #generate_cert
 
-configure_fpm
-configure_fpm_adm
-configure_fpm_prd
-configure_nginx
-create_index_php
+#configure_fpm
+#configure_fpm_adm
+#configure_fpm_prd
+#configure_nginx
+#create_index_php
 
 
 
