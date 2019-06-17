@@ -13,7 +13,7 @@ alias sudo='sudo -S'
 
 # Установить bash
 sudo apt-get update -yqq
-sudo apt-get install -yqq bash
+sudo apt-get install -yqq bash openssh-server
 
 # Проверяем существование пользователя
 user_id=$(id -u ${SERVICE_USER} 2>/dev/null)
