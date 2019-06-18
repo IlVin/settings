@@ -38,35 +38,33 @@ export CACHE_DIR="${PRJ_ROOT}/cache"    # Кэш nginx
 export RUN_DIR="${PRJ_ROOT}/run"        # Папка для UNIX сокетов
 export CONF_DIR="${PRJ_ROOT}/conf"      # Папка для конфигов сайта
 
-export CONF_NGINX="${CONF_DIR}/nginx.conf"
-export CONF_NGINX_ADM="${CONF_DIR}/nginx_adm.conf"
-export CONF_NGINX_PRD="${CONF_DIR}/nginx_prd.conf"
+export CONF_NGINX="${CONF_DIR}/${PRJ_NAME}_nginx.conf"
 
 export ROOT_FPM_ADM="${PRJ_ROOT}"
-export ROOT_FPM_PRD="${PRJ_ROOT}/root_fpm_prd"
+export ROOT_FPM_PRD="${PRJ_ROOT}/root_prd"
 
-export SOCK_FPM_ADM="${RUN_DIR}/${PRJ_NAME}-fpm-adm.sock"
-export SOCK_FPM_PRD="${RUN_DIR}/${PRJ_NAME}-fpm-prd.sock"
+export SOCK_FPM_ADM="${RUN_DIR}/${PRJ_NAME}-adm.sock"
+export SOCK_FPM_PRD="${RUN_DIR}/${PRJ_NAME}-prd.sock"
 
 export ACCESS_LOG_NGINX="${LOG_DIR}/access-${PRJ_NAME}-nginx_log"
-export ACCESS_LOG_FPM_ADM="${LOG_DIR}/access-${PRJ_NAME}-fpm-adm_log"
-export ACCESS_LOG_FPM_PRD="${LOG_DIR}/access-${PRJ_NAME}-fpm-prd_log"
+export ACCESS_LOG_FPM_ADM="${LOG_DIR}/access-${PRJ_NAME}-adm_log"
+export ACCESS_LOG_FPM_PRD="${LOG_DIR}/access-${PRJ_NAME}-prd_log"
 
 export ERROR_LOG_NGINX="${LOG_DIR}/error-${PRJ_NAME}-nginx_log"
-export ERROR_LOG_FPM_ADM="${LOG_DIR}/error-${PRJ_NAME}-fpm-adm_log"
-export ERROR_LOG_FPM_PRD="${LOG_DIR}/error-${PRJ_NAME}-fpm-prd_log"
+export ERROR_LOG_FPM_ADM="${LOG_DIR}/error-${PRJ_NAME}-adm_log"
+export ERROR_LOG_FPM_PRD="${LOG_DIR}/error-${PRJ_NAME}-prd_log"
 
 export STATUS_PATH_NGINX="/${PRJ_NAME}-status_nginx"
-export STATUS_PATH_FPM_ADM="/${PRJ_NAME}-status_fpm_adm"
-export STATUS_PATH_FPM_PRD="/${PRJ_NAME}-status_fpm_prd"
+export STATUS_PATH_FPM_ADM="/${PRJ_NAME}-status_adm"
+export STATUS_PATH_FPM_PRD="/${PRJ_NAME}-status_prd"
 
 export PING_PATH_NGINX="/${PRJ_NAME}-ping_nginx"
-export PING_PATH_FPM_ADM="/${PRJ_NAME}-ping_fpm_adm"
-export PING_PATH_FPM_PRD="/${PRJ_NAME}-ping_fpm_prd"
+export PING_PATH_FPM_ADM="/${PRJ_NAME}-ping_adm"
+export PING_PATH_FPM_PRD="/${PRJ_NAME}-ping_prd"
 
 export PING_RESPONSE_NGINX="${PRJ_NAME}-pong_nginx"
-export PING_RESPONSE_FPM_ADM="${PRJ_NAME}-pong_fpm_adm"
-export PING_RESPONSE_FPM_PRD="${PRJ_NAME}-pong_fpm_prd"
+export PING_RESPONSE_FPM_ADM="${PRJ_NAME}-pong_adm"
+export PING_RESPONSE_FPM_PRD="${PRJ_NAME}-pong_prd"
 
 export PORT_NGINX="80"
 
@@ -102,10 +100,10 @@ export PRJ_GROUP="${PRJ_NAME}-www"
 export USER_NGINX="${PRJ_NAME}-nginx"
 export GROUP_NGINX="${USER_NGINX}"
 
-export USER_FPM_ADM="${PRJ_NAME}-fpm-adm"
+export USER_FPM_ADM="${PRJ_NAME}-adm"
 export GROUP_FPM_ADM=${PRJ_GROUP}
 
-export USER_FPM_PRD="${PRJ_NAME}-fpm-prd"
+export USER_FPM_PRD="${PRJ_NAME}-prd"
 export GROUP_FPM_PRD=${USER_FPM_PRD}
 
 export PHPVER='7.2'

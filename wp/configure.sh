@@ -219,7 +219,7 @@ function generate_cert() {
     # WEB-сервер: сертификат + приватный ключ
     # Этот сертификат + ключ нужно купить у провайдера
     # А пока генерируем самоподписанный
-    if [[ ! -f ${CERT_DIR}/${PRJ_DOMAIN}_server.pem || ! -f ${CERT_DIR}/${PRJ_DOMAIN}_server.key || ! -f ${CERT_DIR}/${PRJ_DOMAIN}_superuser.key || ! -f ${CERT_DIR}/${PRJ_DOMAIN}_superuser.key || ! -f ${CERT_DIR}/${PRJ_DOMAIN}_superuser.p12 ]]
+    if [[ ! -f ${CERT_DIR}/${PRJ_NAME}_server.pem || ! -f ${CERT_DIR}/${PRJ_NAME}_server.key || ! -f ${CERT_DIR}/${PRJ_NAME}_superuser.key || ! -f ${CERT_DIR}/${PRJ_NAME}_superuser.key || ! -f ${CERT_DIR}/${PRJ_NAME}_superuser.p12 ]]
     then
         cat << EOF | ssh ${SERVICE_USER}@${SERVICE_HOST} "/bin/bash -s" | tar -C ${CERT_DIR} -xvf -
             set -x
@@ -233,50 +233,50 @@ function generate_cert() {
 
             # СЕРВЕР: Генерируем сертификат + ключ
             openssl req -new -newkey rsa:1024 -nodes \
-                -keyout \${CERT_DIR}/${PRJ_DOMAIN}_server.key \
+                -keyout \${CERT_DIR}/${PRJ_NAME}_server.key \
                 -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Server/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-                -out \${CERT_DIR}/${PRJ_DOMAIN}_server.csr
+                -out \${CERT_DIR}/${PRJ_NAME}_server.csr
 
             # СЕРВЕР: Подписываем
             openssl x509 -req -days 36500 \
-                -in \${CERT_DIR}/${PRJ_DOMAIN}_server.csr \
+                -in \${CERT_DIR}/${PRJ_NAME}_server.csr \
                 -CA \${HOME}/CA/iv77msk.ru_CA.crt \
                 -CAkey \${HOME}/CA/iv77msk.ru_CA.key \
                 -set_serial 0x\`openssl rand -hex 16\` \
                 -sha256 \
                 -extfile \${CERT_DIR}/extfile.ini \
-                -out \${CERT_DIR}/${PRJ_DOMAIN}_server.pem
+                -out \${CERT_DIR}/${PRJ_NAME}_server.pem
 
             # КЛИЕНТ: сертификат + приватный ключ
             openssl req -new -newkey rsa:1024 -nodes \
-                -keyout \${CERT_DIR}/${PRJ_DOMAIN}_superuser.key \
+                -keyout \${CERT_DIR}/${PRJ_NAME}_superuser.key \
                 -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-                -out \${CERT_DIR}/${PRJ_DOMAIN}_superuser.csr
+                -out \${CERT_DIR}/${PRJ_NAME}_superuser.csr
 
             # КЛИЕНТ: подписываем
             openssl x509 -req -days 36500 \
-                -in \${CERT_DIR}/${PRJ_DOMAIN}_superuser.csr \
+                -in \${CERT_DIR}/${PRJ_NAME}_superuser.csr \
                 -CA \${HOME}/CA/iv77msk.ru_CA.crt \
                 -CAkey \${HOME}/CA/iv77msk.ru_CA.key \
                 -set_serial 0x`openssl rand -hex 16` \
                 -sha256 \
                 -extfile \${CERT_DIR}/extfile.ini \
-                -out \${CERT_DIR}/${PRJ_DOMAIN}_superuser.pem
+                -out \${CERT_DIR}/${PRJ_NAME}_superuser.pem
 
             #  Создание сертфиката в формате PKCS#12 для браузеров
             openssl pkcs12 -export \
-                -in \${CERT_DIR}/${PRJ_DOMAIN}_superuser.pem \
-                -inkey \${CERT_DIR}/${PRJ_DOMAIN}_superuser.key \
-                -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
+                -in \${CERT_DIR}/${PRJ_NAME}_superuser.pem \
+                -inkey \${CERT_DIR}/${PRJ_NAME}_superuser.key \
+                -name "Sub-domain certificate for ${PRJ_NAME}" \
                 -passout pass: \
-                -out \${CERT_DIR}/${PRJ_DOMAIN}_superuser.p12
+                -out \${CERT_DIR}/${PRJ_NAME}_superuser.p12
 
             cd \${CERT_DIR} && sudo tar --to-stdout -c \
-                ${PRJ_DOMAIN}_server.pem \
-                ${PRJ_DOMAIN}_server.key \
-                ${PRJ_DOMAIN}_superuser.pem \
-                ${PRJ_DOMAIN}_superuser.key \
-                ${PRJ_DOMAIN}_superuser.p12 \
+                ${PRJ_NAME}_server.pem \
+                ${PRJ_NAME}_server.key \
+                ${PRJ_NAME}_superuser.pem \
+                ${PRJ_NAME}_superuser.key \
+                ${PRJ_NAME}_superuser.p12 \
 
 EOF
     fi
@@ -285,22 +285,24 @@ EOF
 # https://habr.com/ru/post/316802/
 # https://qwertys.ru/?p=78 - chroot
 function configure_fpm() {
-    sudo sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/${PHPVER}/fpm/php-fpm.conf
+    sudo sed -i -r \
+        -e "s|;*\s*(daemonize)\s*=\s*yes|\1 = no|g" \
+    /etc/php/${PHPVER}/fpm/php-fpm.conf
 
-    sudo sed -i "s|display_errors\s*=.*|display_errors = Off|g" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|display_startup_errors\s*=.*|display_startup_errors = Off|g" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|log_errors\s*=.*|log_errors = On|g" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|allow_url_fopen\s*=.*|allow_url_fopen = Off|g" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|allow_url_include\s*=.*|allow_url_include = Off|g" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|;*\s*date\.timezone\s*=.*|date.timezone = ${TIMEZONE}|g" /etc/php/${PHPVER}/fpm/php.ini
-
-    sudo sed -i "s|memory_limit =.*|memory_limit = ${PHP_MEMORY_LIMIT}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|upload_max_filesize =.*|upload_max_filesize = ${MAX_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|max_file_uploads =.*|max_file_uploads = ${PHP_MAX_FILE_UPLOAD}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|post_max_size =.*|post_max_size = ${PHP_MAX_POST}|" /etc/php/${PHPVER}/fpm/php.ini
-    sudo sed -i "s|;*\s*cgi\.fix_pathinfo\s*=.*|cgi.fix_pathinfo = 0|g" /etc/php/${PHPVER}/fpm/php.ini
-
-    sudo sed -i "s|doc_root\s*=.*|doc_root = ${HTDOCS_DIR}|" /etc/php/${PHPVER}/fpm/php.ini
+    sudo sed -i -r \
+        -e "s|(display_errors)\s*=.*|\1 = Off|g" \
+        -e "s|(display_startup_errors)\s*=.*|\1 = Off|g" \
+        -e "s|(log_errors)\s*=.*|\1 = On|g" \
+        -e "s|(allow_url_fopen)\s*=.*|\1 = Off|g" \
+        -e "s|(allow_url_include)\s*=.*|\1 = Off|g" \
+        -e "s|;*\s*(date\.timezone)\s*=.*|\1 = ${TIMEZONE}|g" \
+        -e "s|(memory_limit)\s*=.*|\1 = ${PHP_MEMORY_LIMIT}|" \
+        -e "s|(upload_max_filesize)\s*=.*|\1 = ${MAX_UPLOAD}|" \
+        -e "s|(max_file_uploads)\s*=.*|\1 = ${PHP_MAX_FILE_UPLOAD}|" \
+        -e "s|(post_max_size)\s*=.*|\1 = ${PHP_MAX_POST}|" \
+        -e "s|;*\s*(cgi\.fix_pathinfo)\s*=.*|\1 = 0|g" \
+        -e "s|(doc_root)\s*=.*|\1 = ${HTDOCS_DIR}|" \
+    /etc/php/${PHPVER}/fpm/php.ini
     #sudo sed -i "s|user_dir\s*=.*|user_dir =|g" /etc/php/${PHPVER}/fpm/php.ini
 
     [[ -f /etc/php/${PHPVER}/fpm/pool.d/www.conf ]] && sudo mv /etc/php/${PHPVER}/fpm/pool.d/www.conf /etc/php/${PHPVER}/fpm/example_pool.conf
@@ -390,41 +392,39 @@ function make_root_fpm() {
 
 function configure_fpm_adm() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
-    setup_user_group ${USER_FPM_ADM} ${GROUP_FPM_ADM}
 
     sudo sed -i -r \
         -e "s|^\s*\[www\]|[${PRJ_NAME}_adm]|g" \
-        -e "s|^;*\s*user\s*=.*|user = ${USER_FPM_ADM}|g" \
-        -e "s|^;*\s*group\s*=.*|group = ${GROUP_FPM_ADM}|g" \
-        -e "s|^;*\s*listen\s*=.*|listen = ${SOCK_FPM_ADM}|g" \
-        -e "s|^;*\s*listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" \
-        -e "s|^;*\s*listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" \
-        -e "s|^;*\s*listen\.mode\s*=.*|listen.mode = 0660|g" \
-        -e "s|^;*\s*process\.priority\s*=.*|process.priority = -19|g" \
-        -e "s|^;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_ADM}|g" \
-        -e "s|^;*\s*access\.format\s*=|access.format =|g" \
-        -e "s|^;*\s*chroot\s*=.*|;chroot = ${ROOT_FPM_ADM}|g" \
-        -e "s|^;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" \
-        -e "s|^;*\s*clear_env\s*=.*|clear_env = yes|g" \
-        -e "s|^;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" \
-        -e "s|^;*\s*env\[TMP\]\s*=.*|env\[TMP\] = /tmp|g" \
-        -e "s|^;*\s*pm\s*=.*|pm = static|g" \
-        -e "s|^;*\s*pm\.max_children\s*=.*|pm.max_children = 2|g" \
-        -e "s|^;*\s*pm\.min_childrens*=.*|pm.min_children = 2|g" \
-        -e "s|^;*\s*pm\.start_servers\s*=.*|pm.start_servers = 2|g" \
-        -e "s|^;*\s*pm\.min_spare_servers\s*=.*|pm.min_spare_servers = 0|g" \
-        -e "s|^;*\s*pm\.max_spare_servers\s*=.*|pm.max_spare_servers = 2|g" \
-        -e "s|^;*\s*pm\.process_idle_timeout\s*=.*|pm.process_idle_timeout = 10s|g" \
-        -e "s|^;*\s*pm\.max_requests\s*=.*|pm.max_requests = 1000|g" \
-        -e "s|^;*\s*pm\.status_path\s*=.*|pm.status_path = ${STATUS_PATH_FPM_ADM}|g" \
-        -e "s|^;*\s*ping\.path\s*=.*|ping.path = ${PING_PATH_FPM_ADM}|g" \
-        -e "s|^;*\s*ping\.response\s*=.*|ping.response = ${PING_RESPONSE_FPM_ADM}|g" \
+        -e "s|^;*\s*(user)\s*=.*|\1 = ${USER_FPM_ADM}|g" \
+        -e "s|^;*\s*(group)\s*=.*|\1 = ${GROUP_FPM_ADM}|g" \
+        -e "s|^;*\s*(listen)\s*=.*|\1 = ${SOCK_FPM_ADM}|g" \
+        -e "s|^;*\s*(listen\.owner)\s*=.*|\1 = ${USER_NGINX}|g" \
+        -e "s|^;*\s*(listen\.group)\s*=.*|\1 = ${GROUP_NGINX}|g" \
+        -e "s|^;*\s*(listen\.mode)\s*=.*|\1 = 0660|g" \
+        -e "s|^;*\s*(process\.priority)\s*=.*|\1 = -19|g" \
+        -e "s|^;*\s*(access\.log)\s*=.*|\1 = ${ACCESS_LOG_FPM_ADM}|g" \
+        -e "s|^;*\s*(access\.format)\s*=|\1 =|g" \
+        -e "s|^;*\s*(chroot)\s*=.*|;\1 = ${ROOT_FPM_ADM}|g" \
+        -e "s|^;*\s*(chdir)\s*=.*|\1 = ${HTDOCS_DIR}|g" \
+        -e "s|^;*\s*(clear_env)\s*=.*|\1 = yes|g" \
+        -e "s|^;*\s*(catch_workers_output)\s*=.*|\1 = yes|g" \
+        -e "s|^;*\s*(env\[TMP\])\s*=.*|\1 = /tmp|g" \
+        -e "s|^;*\s*(pm)\s*=.*|\1 = static|g" \
+        -e "s|^;*\s*(pm\.max_children)\s*=.*|\1 = 2|g" \
+        -e "s|^;*\s*(pm\.min_childrens)*=.*|\1 = 2|g" \
+        -e "s|^;*\s*(pm\.start_servers)\s*=.*|\1 = 2|g" \
+        -e "s|^;*\s*(pm\.min_spare_servers)\s*=.*|\1 = 0|g" \
+        -e "s|^;*\s*(pm\.max_spare_servers)\s*=.*|\1 = 2|g" \
+        -e "s|^;*\s*(pm\.process_idle_timeout)\s*=.*|\1 = 10s|g" \
+        -e "s|^;*\s*(pm\.max_requests)\s*=.*|\1 = 1000|g" \
+        -e "s|^;*\s*(pm\.status_path)\s*=.*|\1 = ${STATUS_PATH_FPM_ADM}|g" \
+        -e "s|^;*\s*(ping\.path)\s*=.*|\1 = ${PING_PATH_FPM_ADM}|g" \
+        -e "s|^;*\s*(ping\.response)\s*=.*|\1 = ${PING_RESPONSE_FPM_ADM}|g" \
     /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 }
 
 function configure_fpm_prd() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
-    setup_user_group ${USER_FPM_PRD} ${GROUP_FPM_PRD}
 
     # make_root_fpm
         # root
@@ -443,84 +443,58 @@ function configure_fpm_prd() {
 
     sudo sed -i -r \
         -e "s|^\s*\[www\]|[${PRJ_NAME}_prd]|g" \
-        -e "s|^;*\s*user\s*=.*|user = ${USER_FPM_PRD}|g" \
-        -e "s|^;*\s*group\s*=.*|group = ${GROUP_FPM_PRD}|g" \
-        -e "s|^;*\s*listen\s*=.*|listen = ${SOCK_FPM_PRD}|g" \
-        -e "s|^;*\s*listen\.owner\s*=.*|listen.owner = ${USER_NGINX}|g" \
-        -e "s|^;*\s*listen\.group\s*=.*|listen.group = ${GROUP_NGINX}|g" \
-        -e "s|^;*\s*listen\.mode\s*=.*|listen.mode = 0660|g" \
-        -e "s|^;*\s*process\.priority\s*=.*|process.priority = -18|g" \
-        -e "s|^;*\s*access\.log\s*=.*|access.log = ${ACCESS_LOG_FPM_PRD}|g" \
-        -e "s|^;*\s*access\.format\s*=|access.format =|g" \
-        -e "s|^;*\s*chroot\s*=.*|chroot = ${ROOT_FPM_PRD}|g" \
-        -e "s|^;*\s*chdir\s*=.*|chdir = ${HTDOCS_DIR}|g" \
-        -e "s|^;*\s*clear_env\s*=.*|clear_env = yes|g" \
-        -e "s|^;*\s*catch_workers_output\s*=.*|catch_workers_output = yes|g" \
-        -e "s|^;*\s*env\[TMP\]\s*=.*|env\[TMP\] = /tmp|g" \
-        -e "s|^;*\s*pm\s*=.*|pm = dynamic|g" \
-        -e "s|^;*\s*pm\.max_children\s*=.*|pm.max_children = 20|g" \
-        -e "s|^;*\s*pm\.min_childrens*=.*|pm.min_children = 5|g" \
-        -e "s|^;*\s*pm\.start_servers\s*=.*|pm.start_servers = 5|g" \
-        -e "s|^;*\s*pm\.min_spare_servers\s*=.*|pm.min_spare_servers = 3|g" \
-        -e "s|^;*\s*pm\.max_spare_servers\s*=.*|pm.max_spare_servers = 5|g" \
-        -e "s|^;*\s*pm\.process_idle_timeout\s*=.*|pm.process_idle_timeout = 10s|g" \
-        -e "s|^;*\s*pm\.max_requests\s*=.*|pm.max_requests = 1000|g" \
-        -e "s|^;*\s*pm\.status_path\s*=.*|pm.status_path = ${STATUS_PATH_FPM_PRD}|g" \
-        -e "s|^;*\s*ping\.path\s*=.*|ping.path = ${PING_PATH_FPM_PRD}|g" \
-        -e "s|^;*\s*ping\.response\s*=.*|ping.response = ${PING_RESPONSE_FPM_PRD}|g" \
+        -e "s|^;*\s*(user)\s*=.*|\1 = ${USER_FPM_PRD}|g" \
+        -e "s|^;*\s*(group)\s*=.*|\1 = ${GROUP_FPM_PRD}|g" \
+        -e "s|^;*\s*(listen)\s*=.*|\1 = ${SOCK_FPM_PRD}|g" \
+        -e "s|^;*\s*(listen\.owner)\s*=.*|\1 = ${USER_NGINX}|g" \
+        -e "s|^;*\s*(listen\.group)\s*=.*|\1 = ${GROUP_NGINX}|g" \
+        -e "s|^;*\s*(listen\.mode)\s*=.*|\1 = 0660|g" \
+        -e "s|^;*\s*(process\.priority)\s*=.*|\1 = -18|g" \
+        -e "s|^;*\s*(access\.log)\s*=.*|\1 = ${ACCESS_LOG_FPM_PRD}|g" \
+        -e "s|^;*\s*(access\.format)\s*=|\1 =|g" \
+        -e "s|^;*\s*(chroot)\s*=.*|\1 = ${ROOT_FPM_PRD}|g" \
+        -e "s|^;*\s*(chdir)\s*=.*|\1 = ${HTDOCS_DIR}|g" \
+        -e "s|^;*\s*(clear_env)\s*=.*|\1 = yes|g" \
+        -e "s|^;*\s*(catch_workers_output)\s*=.*|\1 = yes|g" \
+        -e "s|^;*\s*(env\[TMP\])\s*=.*|\1 = /tmp|g" \
+        -e "s|^;*\s*(pm)\s*=.*|\1 = dynamic|g" \
+        -e "s|^;*\s*(pm\.max_children)\s*=.*|\1 = 20|g" \
+        -e "s|^;*\s*(pm\.min_children)\s*=.*|\1 = 5|g" \
+        -e "s|^;*\s*(pm\.start_servers)\s*=.*|\1 = 5|g" \
+        -e "s|^;*\s*(pm\.min_spare_servers)\s*=.*|\1 = 3|g" \
+        -e "s|^;*\s*(pm\.max_spare_servers)\s*=.*|\1 = 5|g" \
+        -e "s|^;*\s*(pm\.process_idle_timeout)\s*=.*|\1 = 10s|g" \
+        -e "s|^;*\s*(pm\.max_requests)\s*=.*|\1 = 1000|g" \
+        -e "s|^;*\s*(pm\.status_path)\s*=.*|\1 = ${STATUS_PATH_FPM_PRD}|g" \
+        -e "s|^;*\s*(ping\.path)\s*=.*|\1 = ${PING_PATH_FPM_PRD}|g" \
+        -e "s|^;*\s*(ping\.response)\s*=.*|\1 = ${PING_RESPONSE_FPM_PRD}|g" \
     /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 }
 
 function configure_nginx() {
-    setup_user_group ${USER_NGINX} ${GROUP_NGINX}
 
     sudo sed -r -i \
-        -e "s|^#*(\s*)#*user\s+.*|user ${USER_NGINX};\n|;" \
-        -e "s|^#*(\s*)#*error_log\s+.*|\1error_log ${ERROR_LOG_NGINX} warn;|g" \
-        -e "s|^#*(\s*)#*access_log\s+.*|\1access_log ${ACCESS_LOG_NGINX} main;|g" \
-        -e "s|^#*(\s*)#*sendfile\s+.*|\1sendfile on;|g" \
-        -e "s|^#*(\s*)#*tcp_nopush\s+.*|\1tcp_nopush on;|g" \
-        -e "s|^#*(\s*)#*tcp_nodelay\s+.*|\1tcp_nodelay on;|g" \
+        -e "s|^#*(\s*)#*(user)\s+.*|\2 ${USER_NGINX};|;" \
+        -e "s|^#*(\s*)#*(worker_processes)\s+.*|\2 1;|;" \
+        -e "s|^#*(\s*)#*(error_log)\s+.*|\1\2 ${ERROR_LOG_NGINX} warn;|g" \
+        -e "s|^#*(\s*)#*(access_log)\s+.*|\1\2 ${ACCESS_LOG_NGINX} main;|g" \
+        -e "s|^#*(\s*)#*(sendfile)\s+.*|\1\2 on;|g" \
+        -e "s|^#*(\s*)#*(tcp_nopush)\s+.*|\1\2 on;|g" \
+        -e "s|^#*(\s*)#*(tcp_nodelay)\s+.*|\1\2 on;|g" \
+        -e "s|^#*(\s*)#*(gzip)\s+.*|\1\2 on;|g" \
     /etc/nginx/nginx.conf
         #-e "s|#*(\s*)#*group\s+.*||g;" \
         #-e "2 s|^|group ${GROUP_NGINX};\n|g" \
 
-
-    cat << EOF | sudo tee /etc/nginx/conf.d/10_${PRJ_NAME}-ssl_settings.conf > /dev/null
-EOF
-
-    RESTRICTIONS=<<EOF
-        location = /favicon.ico {
-            log_not_found off;
-            access_log off;
-        }
-
-        location = /robots.txt {
-            allow all;
-            try_files \$uri \$uri/ /index.php?\$args \@robots;
-            #access_log off;
-            #log_not_found off;
-        }
-        location @robots {
-           return 200 "User-agent: *\\nDisallow: /wp-admin/\\nDisallow: /wp-admin/admin-ajax.php\\n";
-        }
-
-        location ~ /\\.(ht|git|svn) {
-            deny all;
-        }
-EOF
-
-    cat << EOF | sudo tee /etc/nginx/conf.d/20_${PRJ_NAME}-upstreams.conf > /dev/null
-        upstream wp_adm_upstream {
+cat << EOF | tee ${CONF_NGINX} > /dev/null
+        upstream ${PRJ_NAME}_adm_upstream {
             server unix:${SOCK_FPM_ADM};
         }
 
-        upstream wp_prd_upstream {
+        upstream ${PRJ_NAME}_prd_upstream {
             server unix:${SOCK_FPM_PRD};
         }
-EOF
 
-cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
         server {
             listen 80 default_server;
             listen [::]:80 default_server;
@@ -535,8 +509,8 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
             ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
             ssl_prefer_server_ciphers on;
 
-            ssl_certificate     ${CERT_DIR}/${PRJ_DOMAIN}_server.pem;
-            ssl_certificate_key ${CERT_DIR}/${PRJ_DOMAIN}_server.key;
+            ssl_certificate     ${CERT_DIR}/${PRJ_NAME}_server.pem;
+            ssl_certificate_key ${CERT_DIR}/${PRJ_NAME}_server.key;
             ssl_trusted_certificate ${CERT_CA_CRT};
             ssl_client_certificate ${CERT_CA_CRT};
             ssl_verify_client optional;
@@ -545,6 +519,32 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
 
             #ssl_stapling               on;
             #ssl_trusted_certificate    /etc/nginx/certs/startssl.stapling.crt;
+
+            location = /favicon.ico {
+                log_not_found off;
+                access_log off;
+            }
+
+            location ~* \\.(js|css|png|jpg|jpeg|gif|ico)$ {
+                expires max;
+                log_not_found off;
+            }
+
+            location = /robots.txt {
+                allow all;
+                try_files \$uri \@robots;
+                #try_files \$uri \$uri/ /index.php?\$args \@robots;
+                #access_log off;
+                #log_not_found off;
+            }
+
+            location @robots {
+               return 200 "User-agent: *\\nDisallow: /wp-admin/\\nDisallow: /wp-admin/admin-ajax.php\\n";
+            }
+
+            location ~ /\\.(ht|git|svn) {
+                deny all;
+            }
 
             location @index_php_adm {
                 #try_files \$uri =404;
@@ -610,13 +610,11 @@ cat << EOF | sudo tee /etc/nginx/conf.d/30_${PRJ_NAME}-frontend.conf > /dev/null
                 error_page 418 = @index_php_adm; return 418;
                 #try_files \$uri \$uri/ @index_php_adm;
             }
-
-            location ~* \\.(js|css|png|jpg|jpeg|gif|ico)$ {
-                expires max;
-                log_not_found off;
-            }
         }
 EOF
+    chmod 0664 ${CONF_NGINX}
+    sudo ln -sf ${CONF_NGINX}  /etc/nginx/conf.d/${PRJ_NAME}_nginx.conf
+    sudo rm -f /etc/nginx/conf.d/default.conf
 }
 
 
@@ -703,19 +701,19 @@ EOF
 #install_base
 #install_web
 
-#configure_permissions
+configure_permissions
 
-#configure_hosts
+configure_hosts
 setup_users_groups
-#setup_folders
+setup_folders
 rm -f ${CERT_DIR}/*
 generate_cert
 
-#configure_fpm
-#configure_fpm_adm
-#configure_fpm_prd
-#configure_nginx
-#create_index_php
+configure_fpm
+configure_fpm_adm
+configure_fpm_prd
+configure_nginx
+create_index_php
 
 
 
