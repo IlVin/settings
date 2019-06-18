@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-set -x
+set +x
 
 sudo apt install expect -yqq
 
@@ -45,7 +45,8 @@ echo "ENTER PASSWORD FOR ${WP_USER}:"
 #read PASSWD
 PASSWD='osboxes.org'
 
-/usr/bin/exp ${PASSWD} ssh ${WP_USER}@${WP_HOST}
+#/usr/bin/exp ${PASSWD} ssh ${WP_USER}@${WP_HOST}
 
-#ssh ${WP_USER}@${WP_HOST} "echo '${PASSWD}' | sudo -Sv && /bin/sh -s" -- < ./iv77msk_add.sh --arguments
+cat ./set_env.sh ./configure.sh | ssh ${SERVICE_USER}@${WP_HOST} "/bin/bash -s"
+
 

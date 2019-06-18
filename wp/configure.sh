@@ -30,8 +30,6 @@ function install_base () {
         apt-transport-https
 
     sudo apt-get install -yqq --no-install-recommends --no-install-suggests \
-        bash \
-        sudo \
         tzdata \
         locales \
         lsb-core \
@@ -181,6 +179,11 @@ function setup_users_groups() {
     setup_user_group $(whoami) ${GROUP_NGINX}
     setup_user_group $(whoami) ${GROUP_FPM_PRD}
     setup_user_group $(whoami) ${GROUP_FPM_ADM}
+
+    setup_user_group ${SERVICE_USER} ${PRJ_GROUP}
+    setup_user_group ${SERVICE_USER} ${GROUP_NGINX}
+    setup_user_group ${SERVICE_USER} ${GROUP_FPM_PRD}
+    setup_user_group ${SERVICE_USER} ${GROUP_FPM_ADM}
 }
 
 function setup_folders() {
@@ -207,58 +210,76 @@ function setup_folders() {
 function generate_cert() {
     # https://www.opennet.ru/base/sec/ssl_cert.txt.html
 
-    echo -e "subjectAltName=DNS:$(join_by ',DNS:' ${PRJ_DOMAINS[@]})" > ${CERT_DIR}/extfile.ini
+    # Побавляем SERVICE_HOST в список известных
+    user_knownhost ${SERVICE_USER} ${SERVICE_HOST}
 
-    # ЦЕНТР СЕРТИФИКАЦИИ: сертификат + приватный ключ
-    [[ -f ${CERT_CA_CRT} ]] || openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_CA_KEY} \
-        -x509 \
-        -days 36500 \
-        -subj /C=RU/ST=Msk/L=Msk/O=IlVin/OU=IlVin\ CA/CN=iv77msk.ru/emailAddress=info@iv77msk.ru \
-        -out ${CERT_CA_CRT}
+    # Получаем CA сертификат
+    curl "${CERT_CA_CERT_URL}" > ${CERT_CA_CRT}
 
     # WEB-сервер: сертификат + приватный ключ
-    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_server.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_server.key \
-        -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Server/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_server.csr
+    # Этот сертификат + ключ нужно купить у провайдера
+    # А пока генерируем самоподписанный
+    if [[ ! -f ${CERT_DIR}/${PRJ_DOMAIN}_server.pem || ! -f ${CERT_DIR}/${PRJ_DOMAIN}_server.key || ! -f ${CERT_DIR}/${PRJ_DOMAIN}_superuser.key || ! -f ${CERT_DIR}/${PRJ_DOMAIN}_superuser.key || ! -f ${CERT_DIR}/${PRJ_DOMAIN}_superuser.p12 ]]
+    then
+        cat << EOF | ssh ${SERVICE_USER}@${SERVICE_HOST} "/bin/bash -s" | tar -C ${CERT_DIR} -xvf -
+            set -x
 
-    # Подписываем сертификат WEB-сервера нашим центром сертификации
-    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_server.pem ]] || openssl x509 -req -days 10950 \
-        -in ${CERT_DIR}/${PRJ_DOMAIN}_server.csr \
-        -CA ${CERT_CA_CRT} \
-        -CAkey ${CERT_CA_KEY} \
-        -set_serial 0x`openssl rand -hex 16` \
-        -sha256 \
-        -extfile ${CERT_DIR}/extfile.ini \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_server.pem
+            CERT_DIR="\${HOME}/projects/${PRJ_NAME}"
+            mkdir -p \${CERT_DIR}
 
-    # КЛИЕНТ: сертификат + приватный ключ
-    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_client.csr ]] || openssl req -new -newkey rsa:1024 -nodes \
-        -keyout ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
-        -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.csr
+            rand -s $(date +%s%N) > \${HOME}/.rnd
 
-    # Подписываем клиентский сертификат нашим центром сертификации.
-    # openssl ca -config ca.config -in client01.csr -out client01.crt -batch
-    [[ -f ${CERT_DIR}/${PRJ_DOMAIN}_client.pem ]] || openssl x509 -req -days 10950 \
-        -in ${CERT_DIR}/${PRJ_DOMAIN}_client.csr \
-        -CA ${CERT_CA_CRT} \
-        -CAkey ${CERT_CA_KEY} \
-        -set_serial 0x`openssl rand -hex 16` \
-        -sha256 \
-        -extfile ${CERT_DIR}/extfile.ini \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.pem
+            echo -e "subjectAltName=DNS:$(join_by ',DNS:' ${PRJ_DOMAINS[@]})" > \${CERT_DIR}/extfile.ini
 
-    #  Создание сертфиката в формате PKCS#12 для браузеров
-    openssl pkcs12 -export \
-        -in ${CERT_DIR}/${PRJ_DOMAIN}_client.pem \
-        -inkey ${CERT_DIR}/${PRJ_DOMAIN}_client.key \
-        -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
-        -passout pass: \
-        -out ${CERT_DIR}/${PRJ_DOMAIN}_client.p12
+            # СЕРВЕР: Генерируем сертификат + ключ
+            openssl req -new -newkey rsa:1024 -nodes \
+                -keyout \${CERT_DIR}/${PRJ_DOMAIN}_server.key \
+                -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Server/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
+                -out \${CERT_DIR}/${PRJ_DOMAIN}_server.csr
 
-    rm -f ${CERT_DIR}/*.csr
+            # СЕРВЕР: Подписываем
+            openssl x509 -req -days 36500 \
+                -in \${CERT_DIR}/${PRJ_DOMAIN}_server.csr \
+                -CA \${HOME}/CA/iv77msk.ru_CA.crt \
+                -CAkey \${HOME}/CA/iv77msk.ru_CA.key \
+                -set_serial 0x\`openssl rand -hex 16\` \
+                -sha256 \
+                -extfile \${CERT_DIR}/extfile.ini \
+                -out \${CERT_DIR}/${PRJ_DOMAIN}_server.pem
+
+            # КЛИЕНТ: сертификат + приватный ключ
+            openssl req -new -newkey rsa:1024 -nodes \
+                -keyout \${CERT_DIR}/${PRJ_DOMAIN}_superuser.key \
+                -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
+                -out \${CERT_DIR}/${PRJ_DOMAIN}_superuser.csr
+
+            # КЛИЕНТ: подписываем
+            openssl x509 -req -days 36500 \
+                -in \${CERT_DIR}/${PRJ_DOMAIN}_superuser.csr \
+                -CA \${HOME}/CA/iv77msk.ru_CA.crt \
+                -CAkey \${HOME}/CA/iv77msk.ru_CA.key \
+                -set_serial 0x`openssl rand -hex 16` \
+                -sha256 \
+                -extfile \${CERT_DIR}/extfile.ini \
+                -out \${CERT_DIR}/${PRJ_DOMAIN}_superuser.pem
+
+            #  Создание сертфиката в формате PKCS#12 для браузеров
+            openssl pkcs12 -export \
+                -in \${CERT_DIR}/${PRJ_DOMAIN}_superuser.pem \
+                -inkey \${CERT_DIR}/${PRJ_DOMAIN}_superuser.key \
+                -name "Sub-domain certificate for ${PRJ_DOMAIN}" \
+                -passout pass: \
+                -out \${CERT_DIR}/${PRJ_DOMAIN}_superuser.p12
+
+            cd \${CERT_DIR} && sudo tar --to-stdout -c \
+                ${PRJ_DOMAIN}_server.pem \
+                ${PRJ_DOMAIN}_server.key \
+                ${PRJ_DOMAIN}_superuser.pem \
+                ${PRJ_DOMAIN}_superuser.key \
+                ${PRJ_DOMAIN}_superuser.p12 \
+
+EOF
+    fi
 }
 
 # https://habr.com/ru/post/316802/
@@ -685,10 +706,10 @@ EOF
 #configure_permissions
 
 #configure_hosts
-#setup_users_groups
+setup_users_groups
 #setup_folders
 rm -f ${CERT_DIR}/*
-#generate_cert
+generate_cert
 
 #configure_fpm
 #configure_fpm_adm

@@ -10,6 +10,10 @@ export UMASK='0002'
 
 umask ${UMASK}
 
+export SERVICE_USER='iv77msk_ru'
+export SERVICE_HOST='ca.iv77msk.ru'
+#export SERVICE_HOME=$(grep ${SERVICE_USER} /etc/passwd | cut -d ':' -f 6)
+
 # Проект
 export PRJ_NAME='wp'
 export PRJ_DOMAINS=("${PRJ_NAME}.iv77msk.ru" "www.${PRJ_NAME}.iv77msk.ru")
@@ -19,8 +23,8 @@ export PRJ_EMAIL="ilvin@mail.ru"
 export PRJ_ROOT="/${PRJ_NAME}"
 
 export CERT_DIR="${PRJ_ROOT}/cert"
-export CERT_CA_CRT="${CERT_DIR}/IlVin_CA.crt"
-export CERT_CA_KEY="${CERT_DIR}/IlVin_CA.key"
+export CERT_CA_CERT_URL='https://ca.iv77msk.ru/iv77msk.ru_CA.crt'
+export CERT_CA_CRT="${CERT_DIR}/iv77msk.ru_CA.crt"
 
 export SITE_ROOT="${PRJ_ROOT}/site"
 export HTDOCS_DIR="${SITE_ROOT}/htdocs"
@@ -148,6 +152,16 @@ function start_fpm() {
 
 function stop_fpm() {
     sudo service php7.2-fpm stop
+}
+
+function user_knownhost() {
+    local user=$1
+    local host=$2
+    local user_home=$(grep ${user} /etc/passwd | cut -d ':' -f 6)
+    [ -f ${user_home}/.ssh/known_hosts ] && sudo ssh-keygen -R ${host} -f ${user_home}/.ssh/known_hosts
+    ssh-keyscan ${host} 2>/dev/null | sudo tee -a ${user_home}/.ssh/known_hosts > /dev/null
+    sudo chown ${user}:${user} ${user_home}/.ssh/known_hosts
+    sudo chmod a-rwx,u+rw ${user_home}/.ssh/known_hosts
 }
 
 set -x
