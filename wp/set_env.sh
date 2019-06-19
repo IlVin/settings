@@ -73,7 +73,7 @@ export DEFAULT_PASSWD="P@ssw0rd"
 
 # Установки базы данных
 export DB_HOST_PRD="localhost"
-export DB_PORT_PRD="localhost"
+export DB_PORT_PRD="3306"
 export DB_NAME_PRD="${PRJ_NAME}_prd"
 export DB_USER_PRD="${PRJ_NAME}-prd"
 export DB_PASSWORD_PRD=${DEFAULT_PASSWD}

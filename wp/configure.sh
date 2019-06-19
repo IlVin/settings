@@ -219,7 +219,7 @@ function generate_cert() {
     # WEB-сервер: сертификат + приватный ключ
     # Этот сертификат + ключ нужно купить у провайдера
     # А пока генерируем самоподписанный
-    if [[ ! -f ${CERT_DIR}/${PRJ_NAME}_server.pem || ! -f ${CERT_DIR}/${PRJ_NAME}_server.key || ! -f ${CERT_DIR}/${PRJ_NAME}_superuser.key || ! -f ${CERT_DIR}/${PRJ_NAME}_superuser.key || ! -f ${CERT_DIR}/${PRJ_NAME}_superuser.p12 ]]
+    if [[ ! -f ${CERT_DIR}/${PRJ_NAME}_server.pem || ! -f ${CERT_DIR}/${PRJ_NAME}_server.key || ! -f ${CERT_DIR}/${PRJ_NAME}_admin.p12 ]]
     then
         cat << EOF | ssh ${SERVICE_USER}@${SERVICE_HOST} "/bin/bash -s" | tar -C ${CERT_DIR} -xvf -
             set -x
@@ -249,36 +249,41 @@ function generate_cert() {
 
             # КЛИЕНТ: сертификат + приватный ключ
             openssl req -new -newkey rsa:1024 -nodes \
-                -keyout \${CERT_DIR}/${PRJ_NAME}_superuser.key \
+                -keyout \${CERT_DIR}/${PRJ_NAME}_admin.key \
                 -subj /C=RU/ST=Msk/L=Msk/O=${PRJ_NAME}/OU=${PRJ_NAME}\ Client/CN=${PRJ_DOMAIN}/emailAddress=${PRJ_EMAIL} \
-                -out \${CERT_DIR}/${PRJ_NAME}_superuser.csr
+                -out \${CERT_DIR}/${PRJ_NAME}_admin.csr
 
             # КЛИЕНТ: подписываем
             openssl x509 -req -days 36500 \
-                -in \${CERT_DIR}/${PRJ_NAME}_superuser.csr \
+                -in \${CERT_DIR}/${PRJ_NAME}_admin.csr \
                 -CA \${HOME}/CA/iv77msk.ru_CA.crt \
                 -CAkey \${HOME}/CA/iv77msk.ru_CA.key \
                 -set_serial 0x`openssl rand -hex 16` \
                 -sha256 \
                 -extfile \${CERT_DIR}/extfile.ini \
-                -out \${CERT_DIR}/${PRJ_NAME}_superuser.pem
+                -out \${CERT_DIR}/${PRJ_NAME}_admin.pem
 
-            #  Создание сертфиката в формате PKCS#12 для браузеров
+            # Создание сертфиката в формате PKCS#13 для браузеров
+            # PKCS #12 file that contains a user certificate, user private key, and the associated CA certificate.
             openssl pkcs12 -export \
-                -in \${CERT_DIR}/${PRJ_NAME}_superuser.pem \
-                -inkey \${CERT_DIR}/${PRJ_NAME}_superuser.key \
+                -in \${CERT_DIR}/${PRJ_NAME}_admin.pem \
+                -inkey \${CERT_DIR}/${PRJ_NAME}_admin.key \
                 -name "Sub-domain certificate for ${PRJ_NAME}" \
+                -certfile \${HOME}/CA/iv77msk.ru_CA.crt \
+                -caname sub-iv77msk.ru_CA \
                 -passout pass: \
-                -out \${CERT_DIR}/${PRJ_NAME}_superuser.p12
+                -out \${CERT_DIR}/${PRJ_NAME}_admin.p12
 
+            # Пакуем в TAR архив и отправляем на настраваемый хост
             cd \${CERT_DIR} && sudo tar --to-stdout -c \
                 ${PRJ_NAME}_server.pem \
                 ${PRJ_NAME}_server.key \
-                ${PRJ_NAME}_superuser.pem \
-                ${PRJ_NAME}_superuser.key \
-                ${PRJ_NAME}_superuser.p12 \
+                ${PRJ_NAME}_admin.p12 \
 
 EOF
+        sudo chown ${USER_NGINX}:${GROUP_NGINX} ${CERT_DIR}/${PRJ_NAME}_server.key
+        sudo chmod 400 ${CERT_DIR}/${PRJ_NAME}_server.key
+        sudo chmod 644 ${CERT_DIR}/${PRJ_NAME}_admin.p12
     fi
 }
 
@@ -496,8 +501,13 @@ cat << EOF | tee ${CONF_NGINX} > /dev/null
         }
 
         server {
-            listen 80 default_server;
-            listen [::]:80 default_server;
+            listen 80 ;
+            listen [::]:80 ;
+            server_name _;
+            return 301 https://${PRJ_DOMAIN}$request_uri;
+        }
+
+        server {
             listen 443 ssl default_server;
             listen [::]:443 ssl default_server;
             server_name ${PRJ_DOMAIN};
@@ -577,7 +587,7 @@ cat << EOF | tee ${CONF_NGINX} > /dev/null
             }
 
             location @index_php_prd {
-                try_files \$uri =404;
+                #try_files \$uri =404;
 
                 fastcgi_pass unix:${SOCK_FPM_PRD};
                 include fastcgi_params;
@@ -607,7 +617,10 @@ cat << EOF | tee ${CONF_NGINX} > /dev/null
             }
 
             location / {
-                error_page 418 = @index_php_adm; return 418;
+                if (\$ssl_client_verify = 'SUCCESS') {
+                    error_page 418 = @index_php_adm; return 418;
+                }
+                error_page 418 = @index_php_prd; return 418;
                 #try_files \$uri \$uri/ @index_php_adm;
             }
         }
