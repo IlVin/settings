@@ -64,6 +64,7 @@ function purge_web() {
     sudo apt-get purge -yqq nginx*
     sudo apt-get purge -yqq php${PHPVER}*
     sudo apt-get purge -yqq php-fpm${PHPVER}*
+    sudo apt purge -yqq mariadb.*
 
     [[ -d /etc/php ]] && sudo rm -rf /etc/php
     [[ -d /etc/nginx ]] && sudo rm -rf /etc/nginx
@@ -90,6 +91,18 @@ function install_web () {
         php${PHPVER}-xsl \
         php${PHPVER}-xmlrpc \
         php${PHPVER}-curl
+}
+
+function install_mariadb() {
+    # https://downloads.mariadb.org/mariadb/repositories/
+    sudo apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
+    #sudo add-apt-repository "deb [arch=amd64,arm64,ppc64el] http://mirror.mephi.ru/mariadb/repo/10.3/ubuntu $(LSB) main"
+    sudo add-apt-repository "deb [arch=amd64] http://nyc2.mirrors.digitalocean.com/mariadb/repo/10.3/ubuntu $(LSB) main"
+
+    sudo apt install -yqq \
+        mariadb-server \
+        mariadb-client \
+
 }
 
 function configure_permissions() {
@@ -567,13 +580,14 @@ cat << EOF | tee ${CONF_NGINX} > /dev/null
                 fastcgi_param  UMASK "${UMASK}";
                 fastcgi_param  DB_HOST "${DB_HOST_ADM}";
                 fastcgi_param  DB_PORT "${DB_PORT_ADM}";
-                fastcgi_param  DB_NAME "${DB_NAME_ADM}";
                 fastcgi_param  DB_USER "${DB_USER_ADM}";
                 fastcgi_param  DB_PASSWORD "${DB_PASSWORD_ADM}";
+                fastcgi_param  DB_NAME_WP "${DB_NAME_WP}";
 
-                fastcgi_param  READ_ONLY "1";
-                fastcgi_param  SELECT_ONLY "1";
-                fastcgi_param  OFFLINE "1";
+                fastcgi_param  FSMODE "RW";
+                fastcgi_param  DBMODE "FULL";
+                fastcgi_param  NETWORK "ON";
+                fastcgi_param  SENDMAIL "ON";
                 fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_i_dn";
                 fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_s_dn";
                 fastcgi_param  SSL_CLIENT_VERIFY "\$ssl_client_verify";
@@ -597,13 +611,14 @@ cat << EOF | tee ${CONF_NGINX} > /dev/null
                 fastcgi_param  UMASK "${UMASK}";
                 fastcgi_param  DB_HOST "${DB_HOST_PRD}";
                 fastcgi_param  DB_PORT "${DB_PORT_PRD}";
-                fastcgi_param  DB_NAME "${DB_NAME_PRD}";
                 fastcgi_param  DB_USER "${DB_USER_PRD}";
                 fastcgi_param  DB_PASSWORD "${DB_PASSWORD_PRD}";
+                fastcgi_param  DB_NAME_WP "${DB_NAME_WP}";
 
-                fastcgi_param  READ_ONLY "1";
-                fastcgi_param  SELECT_ONLY "1";
-                fastcgi_param  OFFLINE "1";
+                fastcgi_param  FSMODE "RO";
+                fastcgi_param  DBMODE "LIMITED";
+                fastcgi_param  NETWORK "OFF";
+                fastcgi_param  SENDMAIL "OFF";
                 fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_i_dn";
                 fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_s_dn";
                 fastcgi_param  SSL_CLIENT_VERIFY "\$ssl_client_verify";
@@ -632,14 +647,33 @@ EOF
 
 
 function configure_mariadb() {
-    sudo mysql_secure_installation
-    sudo mysql -uroot -p${DB_PASSWORD} << EOF
+    #sudo mysql_secure_installation
+    sudo mysql --user=root --password=${DEFAULT_PASSWD} mysql << EOF
         SHOW DATABASES;
-        DROP DATABASE IF EXISTS \`${DB_NAME}\`;
-        CREATE DATABASE \`${DB_NAME}\`;
-        GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO ${DB_USER}@'${DB_HOST}' IDENTIFIED BY '${DB_PASSWORD}';
+        UPDATE mysql.user SET Password = PASSWORD('${DEFAULT_PASSWD}') WHERE user = 'root';
+        SET PASSWORD FOR 'root'@'::1' = PASSWORD('${DEFAULT_PASSWD}');
+        DROP USER IF EXISTS ''@'localhost';
+        DROP USER IF EXISTS ''@'localhost.localdomain';
+        DROP USER IF EXISTS '${DB_USER_ADM}'@'${DB_HOST_ADM}';
+        DROP USER IF EXISTS '${DB_USER_PRD}'@'${DB_HOST_PRD}';
+        CREATE USER IF NOT EXISTS '${DB_USER_ADM}'@'${DB_HOST_ADM}' IDENTIFIED BY '${DB_PASSWORD_ADM}';
+        CREATE USER IF NOT EXISTS '${DB_USER_PRD}'@'${DB_HOST_PRD}' IDENTIFIED BY '${DB_PASSWORD_PRD}';
+        DROP DATABASE IF EXISTS \`${DB_NAME_WP}\`;
+        CREATE DATABASE IF NOT EXISTS \`${DB_NAME_WP}\`;
+        GRANT ALL PRIVILEGES ON \`${DB_NAME_WP}\`.* TO '${DB_USER_ADM}'@'${DB_HOST_ADM}';
+        GRANT SELECT,INSERT,UPDATE,DELETE ON \`${DB_NAME_WP}\`.* TO '${DB_USER_PRD}'@'${DB_HOST_PRD}';
         FLUSH PRIVILEGES;
 EOF
+
+    sudo sed -r -i \
+        -e "s|^#*(\s*)#*(default-character-set)\s+.*|\2 = utf8|g" \
+        -e "s|^#*(\s*)#*(character-set-server)\s+.*|\2 = utf8|" \
+        -e "s|^#*(\s*)#*(collation-server)\s+.*|\2 = utf8_general_ci|g" \
+        -e "s|^#*(\s*)#*(character_set_server)\s+.*|\2 = utf8|g" \
+        -e "s|^#*(\s*)#*(collation_server)\s+.*|\2 = utf8_general_ci|g" \
+    /etc/mysql/mariadb.cnf
+
+    sudo service mysql restart
 }
 
 function configure_wp() {
@@ -700,7 +734,9 @@ function create_index_php() {
             closedir(\$dh);
         }
     }
-    \$f_hdl = fopen('/umask_test.txt', 'w');
+    \$path = \$_SERVER['DOCUMENT_ROOT'] . '/umask_' . \$_SERVER['SSL_CLIENT_VERIFY'] . '_test.txt';
+    echo 'PATH: ' . \$path . "\n";
+    \$f_hdl = fopen(\$path, 'w');
     fwrite(\$f_hdl, 'test');
     fclose(\$f_hdl);
 
@@ -713,6 +749,7 @@ EOF
 #purge_web
 #install_base
 #install_web
+install_mariadb
 
 configure_permissions
 
@@ -726,6 +763,7 @@ configure_fpm
 configure_fpm_adm
 configure_fpm_prd
 configure_nginx
+configure_mariadb
 create_index_php
 
 

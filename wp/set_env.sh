@@ -72,17 +72,17 @@ export PORT_NGINX="80"
 export DEFAULT_PASSWD="P@ssw0rd"
 
 # Установки базы данных
+export DB_NAME_WP="${PRJ_NAME}_wordpress"
+
 export DB_HOST_PRD="localhost"
 export DB_PORT_PRD="3306"
-export DB_NAME_PRD="${PRJ_NAME}_prd"
 export DB_USER_PRD="${PRJ_NAME}-prd"
-export DB_PASSWORD_PRD=${DEFAULT_PASSWD}
+export DB_PASSWORD_PRD="${DEFAULT_PASSWD}-prd"
 
 export DB_HOST_ADM="localhost"
-export DB_PORT_ADM="localhost"
-export DB_NAME_ADM="${PRJ_NAME}_adm"
+export DB_PORT_ADM="3306"
 export DB_USER_ADM="${PRJ_NAME}-adm"
-export DB_PASSWORD_ADM=${DEFAULT_PASSWD}
+export DB_PASSWORD_ADM="${DEFAULT_PASSWD}-adm"
 
 # Установки пользователей
 # Политика безопасности:
