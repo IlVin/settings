@@ -2,6 +2,8 @@
 
 set +x
 
+export START_DATE=$(date +%F)
+
 alias sudo='sudo -S'
 
 export SET_ENV='INCLUDED'
@@ -30,7 +32,7 @@ export SITE_ROOT="${PRJ_ROOT}/site"
 export HTDOCS_DIR="${SITE_ROOT}/htdocs"
 export LOG_DIR="${SITE_ROOT}/logs"
 
-export WP_DIR="${HTDOCS_DIR}"           # Папка, в которую WP сетапить (совпадает с ${HTDOCS_DIR})
+export WP_DIR="${HTDOCS_DIR}/blog"      # Папка, в которую WP сетапить (совпадает с ${HTDOCS_DIR})
 export DB_DIR="${PRJ_ROOT}/mysql"
 export SOFT_DIR="${PRJ_ROOT}/soft"      # Папка, в которую скачивается софт, например WP
 
@@ -39,6 +41,8 @@ export RUN_DIR="${PRJ_ROOT}/run"        # Папка для UNIX сокетов
 export CONF_DIR="${PRJ_ROOT}/conf"      # Папка для конфигов сайта
 
 export CONF_NGINX="${CONF_DIR}/${PRJ_NAME}_nginx.conf"
+export CONF_NGINX_FCGI_ADM="${CONF_DIR}/${PRJ_NAME}_nginx_fcgi_adm.conf"
+export CONF_NGINX_FCGI_PRD="${CONF_DIR}/${PRJ_NAME}_nginx_fcgi_prd.conf"
 
 export ROOT_FPM_ADM="${PRJ_ROOT}"
 export ROOT_FPM_PRD="${PRJ_ROOT}/root_prd"
@@ -74,13 +78,13 @@ export DEFAULT_PASSWD="P@ssw0rd"
 # Установки базы данных
 export DB_NAME_WP="${PRJ_NAME}_wordpress"
 
+export DB_PASSWORD_SERVICE_USER="service_user_P@ssw0rd"
+
 export DB_HOST_PRD="localhost"
-export DB_PORT_PRD="3306"
 export DB_USER_PRD="${PRJ_NAME}-prd"
 export DB_PASSWORD_PRD="${DEFAULT_PASSWD}-prd"
 
 export DB_HOST_ADM="localhost"
-export DB_PORT_ADM="3306"
 export DB_USER_ADM="${PRJ_NAME}-adm"
 export DB_PASSWORD_ADM="${DEFAULT_PASSWD}-adm"
 

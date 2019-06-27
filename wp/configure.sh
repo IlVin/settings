@@ -361,6 +361,13 @@ function make_root_fpm() {
         sudo install -g ${group} -o ${user} -d -m a+rwx,g+s,o-w ${root}${folder}
     done
 
+    # MOUNT RW system folders
+    for folder in /var/run/mysqld
+    do
+        sudo install -g ${group} -o ${user} -d -m a+rwx,g+s,o-w ${root}${folder}
+        sudo mount -o bind,rw,noexec ${folder} ${root}${folder}
+    done
+
     # MOUNT RO system files
     for file in /dev/random /dev/urandom /etc/localtime /etc/hosts /etc/resolv.conf
     do
@@ -409,7 +416,9 @@ function make_root_fpm() {
 }
 
 function configure_fpm_adm() {
-    [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] \
+        && cp -f /etc/php/${PHPVER}/fpm/example_pool.conf ${CONF_DIR}/${PRJ_NAME}_adm.conf \
+        && sudo ln -sf ${CONF_DIR}/${PRJ_NAME}_adm.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
 
     sudo sed -i -r \
         -e "s|^\s*\[www\]|[${PRJ_NAME}_adm]|g" \
@@ -438,11 +447,13 @@ function configure_fpm_adm() {
         -e "s|^;*\s*(pm\.status_path)\s*=.*|\1 = ${STATUS_PATH_FPM_ADM}|g" \
         -e "s|^;*\s*(ping\.path)\s*=.*|\1 = ${PING_PATH_FPM_ADM}|g" \
         -e "s|^;*\s*(ping\.response)\s*=.*|\1 = ${PING_RESPONSE_FPM_ADM}|g" \
-    /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    ${CONF_DIR}/${PRJ_NAME}_adm.conf
 }
 
 function configure_fpm_prd() {
-    [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] && sudo cp -f /etc/php/${PHPVER}/fpm/example_pool.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] \
+        && cp -f /etc/php/${PHPVER}/fpm/example_pool.conf ${CONF_DIR}/${PRJ_NAME}_prd.conf \
+        && sudo ln -sf ${CONF_DIR}/${PRJ_NAME}_prd.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
 
     # make_root_fpm
         # root
@@ -486,7 +497,7 @@ function configure_fpm_prd() {
         -e "s|^;*\s*(pm\.status_path)\s*=.*|\1 = ${STATUS_PATH_FPM_PRD}|g" \
         -e "s|^;*\s*(ping\.path)\s*=.*|\1 = ${PING_PATH_FPM_PRD}|g" \
         -e "s|^;*\s*(ping\.response)\s*=.*|\1 = ${PING_RESPONSE_FPM_PRD}|g" \
-    /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    ${CONF_DIR}/${PRJ_NAME}_prd.conf
 }
 
 function configure_nginx() {
@@ -504,7 +515,55 @@ function configure_nginx() {
         #-e "s|#*(\s*)#*group\s+.*||g;" \
         #-e "2 s|^|group ${GROUP_NGINX};\n|g" \
 
-cat << EOF | tee ${CONF_NGINX} > /dev/null
+    cat << EOF | tee ${CONF_NGINX_FCGI_ADM} > /dev/null
+                fastcgi_pass ${PRJ_NAME}_adm_upstream;
+                include fastcgi_params;
+                fastcgi_index index.php;
+
+                fastcgi_param  SCRIPT_FILENAME  \$realpath_root\$fastcgi_script_name;
+                fastcgi_param  UMASK "${UMASK}";
+                fastcgi_param  DB_HOST_WP "${DB_HOST_ADM}";
+                fastcgi_param  DB_USER_WP "${DB_USER_ADM}";
+                fastcgi_param  DB_PASSWORD_WP "${DB_PASSWORD_ADM}";
+                fastcgi_param  DB_NAME_WP "${DB_NAME_WP}";
+
+                fastcgi_param  FSMODE "RW";
+                fastcgi_param  DBMODE "FULL";
+                fastcgi_param  NETWORK "ON";
+                fastcgi_param  SENDMAIL "ON";
+                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_i_dn";
+                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_s_dn";
+                fastcgi_param  SSL_CLIENT_VERIFY "\$ssl_client_verify";
+                fastcgi_param  SSL_SERVER_NAME "\$ssl_server_name";
+                fastcgi_param  SSL_SESSION_ID "\$ssl_session_id";
+                fastcgi_param  SSL_SESSION_REUSED "\$ssl_session_reused";
+EOF
+
+    cat << EOF | tee ${CONF_NGINX_FCGI_PRD} > /dev/null
+                fastcgi_pass ${PRJ_NAME}_prd_upstream;
+                include fastcgi_params;
+                fastcgi_index index.php;
+
+                fastcgi_param  SCRIPT_FILENAME  \$realpath_root\$fastcgi_script_name;
+                fastcgi_param  UMASK "${UMASK}";
+                fastcgi_param  DB_HOST_WP "${DB_HOST_PRD}";
+                fastcgi_param  DB_USER_WP "${DB_USER_PRD}";
+                fastcgi_param  DB_PASSWORD_WP "${DB_PASSWORD_PRD}";
+                fastcgi_param  DB_NAME_WP "${DB_NAME_WP}";
+
+                fastcgi_param  FSMODE "RO";
+                fastcgi_param  DBMODE "LIMITED";
+                fastcgi_param  NETWORK "OFF";
+                fastcgi_param  SENDMAIL "OFF";
+                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_i_dn";
+                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_s_dn";
+                fastcgi_param  SSL_CLIENT_VERIFY "\$ssl_client_verify";
+                fastcgi_param  SSL_SERVER_NAME "\$ssl_server_name";
+                fastcgi_param  SSL_SESSION_ID "\$ssl_session_id";
+                fastcgi_param  SSL_SESSION_REUSED "\$ssl_session_reused";
+EOF
+
+    cat << EOF | tee ${CONF_NGINX} > /dev/null
         upstream ${PRJ_NAME}_adm_upstream {
             server unix:${SOCK_FPM_ADM};
         }
@@ -537,11 +596,17 @@ cat << EOF | tee ${CONF_NGINX} > /dev/null
             ssl_trusted_certificate ${CERT_CA_CRT};
             ssl_client_certificate ${CERT_CA_CRT};
             ssl_verify_client optional;
-            #ssl_stapling on;
-            #ssl_stapling_verify        on;
 
-            #ssl_stapling               on;
-            #ssl_trusted_certificate    /etc/nginx/certs/startssl.stapling.crt;
+            location @index_php_adm {
+                #try_files \$uri =404;
+                include ${CONF_NGINX_FCGI_ADM};
+            }
+
+            location @index_php_prd {
+                #try_files \$uri =404;
+                include ${CONF_NGINX_FCGI_PRD};
+
+            }
 
             location = /favicon.ico {
                 log_not_found off;
@@ -569,67 +634,6 @@ cat << EOF | tee ${CONF_NGINX} > /dev/null
                 deny all;
             }
 
-            location @index_php_adm {
-                #try_files \$uri =404;
-
-                fastcgi_pass unix:${SOCK_FPM_ADM};
-                include fastcgi_params;
-                fastcgi_index index.php;
-
-                fastcgi_param  SCRIPT_FILENAME  \$realpath_root\$fastcgi_script_name;
-                fastcgi_param  UMASK "${UMASK}";
-                fastcgi_param  DB_HOST "${DB_HOST_ADM}";
-                fastcgi_param  DB_PORT "${DB_PORT_ADM}";
-                fastcgi_param  DB_USER "${DB_USER_ADM}";
-                fastcgi_param  DB_PASSWORD "${DB_PASSWORD_ADM}";
-                fastcgi_param  DB_NAME_WP "${DB_NAME_WP}";
-
-                fastcgi_param  FSMODE "RW";
-                fastcgi_param  DBMODE "FULL";
-                fastcgi_param  NETWORK "ON";
-                fastcgi_param  SENDMAIL "ON";
-                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_i_dn";
-                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_s_dn";
-                fastcgi_param  SSL_CLIENT_VERIFY "\$ssl_client_verify";
-                fastcgi_param  SSL_SERVER_NAME "\$ssl_server_name";
-                fastcgi_param  SSL_SESSION_ID "\$ssl_session_id";
-                fastcgi_param  SSL_SESSION_REUSED "\$ssl_session_reused";
-
-                #gzip on;
-                #gzip_comp_level 4;
-                #gzip_proxied any;
-            }
-
-            location @index_php_prd {
-                #try_files \$uri =404;
-
-                fastcgi_pass unix:${SOCK_FPM_PRD};
-                include fastcgi_params;
-                fastcgi_index index.php;
-
-                fastcgi_param  SCRIPT_FILENAME  \$realpath_root\$fastcgi_script_name;
-                fastcgi_param  UMASK "${UMASK}";
-                fastcgi_param  DB_HOST "${DB_HOST_PRD}";
-                fastcgi_param  DB_PORT "${DB_PORT_PRD}";
-                fastcgi_param  DB_USER "${DB_USER_PRD}";
-                fastcgi_param  DB_PASSWORD "${DB_PASSWORD_PRD}";
-                fastcgi_param  DB_NAME_WP "${DB_NAME_WP}";
-
-                fastcgi_param  FSMODE "RO";
-                fastcgi_param  DBMODE "LIMITED";
-                fastcgi_param  NETWORK "OFF";
-                fastcgi_param  SENDMAIL "OFF";
-                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_i_dn";
-                fastcgi_param  SSL_CLIENT_I_DN "\$ssl_client_s_dn";
-                fastcgi_param  SSL_CLIENT_VERIFY "\$ssl_client_verify";
-                fastcgi_param  SSL_SERVER_NAME "\$ssl_server_name";
-                fastcgi_param  SSL_SESSION_ID "\$ssl_session_id";
-                fastcgi_param  SSL_SESSION_REUSED "\$ssl_session_reused";
-
-                #gzip on;
-                #gzip_comp_level 4;
-                #gzip_proxied any;
-            }
 
             location / {
                 if (\$ssl_client_verify = 'SUCCESS') {
@@ -656,12 +660,15 @@ function configure_mariadb() {
         DROP USER IF EXISTS ''@'localhost.localdomain';
         DROP USER IF EXISTS '${DB_USER_ADM}'@'${DB_HOST_ADM}';
         DROP USER IF EXISTS '${DB_USER_PRD}'@'${DB_HOST_PRD}';
+        DROP USER IF EXISTS '${SERVICE_USER}'@'localhost';
         CREATE USER IF NOT EXISTS '${DB_USER_ADM}'@'${DB_HOST_ADM}' IDENTIFIED BY '${DB_PASSWORD_ADM}';
         CREATE USER IF NOT EXISTS '${DB_USER_PRD}'@'${DB_HOST_PRD}' IDENTIFIED BY '${DB_PASSWORD_PRD}';
+        CREATE USER IF NOT EXISTS '${SERVICE_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD_SERVICE_USER}';
         DROP DATABASE IF EXISTS \`${DB_NAME_WP}\`;
         CREATE DATABASE IF NOT EXISTS \`${DB_NAME_WP}\`;
-        GRANT ALL PRIVILEGES ON \`${DB_NAME_WP}\`.* TO '${DB_USER_ADM}'@'${DB_HOST_ADM}';
+        GRANT SELECT,INSERT,UPDATE,DELETE,DROP,CREATE,ALTER,INDEX ON \`${DB_NAME_WP}\`.* TO '${DB_USER_ADM}'@'${DB_HOST_ADM}';
         GRANT SELECT,INSERT,UPDATE,DELETE ON \`${DB_NAME_WP}\`.* TO '${DB_USER_PRD}'@'${DB_HOST_PRD}';
+        GRANT ALL PRIVILEGES ON \`${DB_NAME_WP}\`.* TO '${SERVICE_USER}'@'localhost';
         FLUSH PRIVILEGES;
 EOF
 
@@ -677,46 +684,33 @@ EOF
 }
 
 function configure_wp() {
-    [ -f ${SOFT_DIR}/latest.tar.gz  ] && rm -f ${SOFT_DIR}/latest.tar.gz
-    [ -f ${SOFT_DIR}/wordpress.tar.gz ] && rm -f ${SOFT_DIR}/wordpress.tar.gz
-    [ -d ${WP_DIR} ] && rm -rf ${WP_DIR}/*
+    local wp_tar_fn="wordpress_${START_DATE}.tar.gz"
+    [[ -f ${SOFT_DIR}/${wp_tar_fn} ]] || curl 'https://ru.wordpress.org/latest-ru_RU.tar.gz' --max-redirs 3 > ${SOFT_DIR}/${wp_tar_fn}
+    [[ -d ${WP_DIR} ]] && rm -rf ${WP_DIR}
+    [[ -d ${WP_DIR} ]] || mkdir -p ${WP_DIR}
+    [[ -d ${SOFT_DIR}/wordpress ]] && rm -rf ${SOFT_DIR}/wordpress
     cd ${SOFT_DIR} && \
-    [ -f ${SOFT_DIR}/latest-ru_RU.tar.gz ] || wget https://ru.wordpress.org/latest-ru_RU.tar.gz && \
-    tar -xzf ${SOFT_DIR}/latest-ru_RU.tar.gz && \
+    tar -xzf ${SOFT_DIR}/${wp_tar_fn} && \
     cp -R ${SOFT_DIR}/wordpress/* ${WP_DIR}/
 
-    [ -f ${WP_DIR}/wp-config.php ] && rm -f ${WP_DIR}/wp-config.php
+    [[ -f ${WP_DIR}/wp-config.php ]] && rm -f ${WP_DIR}/wp-config.php
     cp ${WP_DIR}/wp-config-sample.php ${WP_DIR}/wp-config.php
 
-    sed --in-place "s/define('WP_DEBUG', false);/define('WP_DEBUG', false);\ndefine('WP_ALLOW_MULTISITE', true);/g" ${WP_DIR}/wp-config.php
-    sed --in-place "s/define('DB_NAME', 'database_name_here');/define('DB_NAME', \$_SERVER['DB_NAME']);/g" ${WP_DIR}/wp-config.php
-    sed --in-place "s/define('DB_USER', 'username_here');/define('DB_USER', \$_SERVER['DB_USER']);/g" ${WP_DIR}/wp-config.php
-    sed --in-place "s/define('DB_PASSWORD', 'password_here');/define('DB_PASSWORD', \$_SERVER['DB_PASSWORD']);/g" ${WP_DIR}/wp-config.php
-    sed --in-place "s/define('DB_HOST', 'localhost');/define('DB_HOST', \$_SERVER['DB_HOST']);/g" ${WP_DIR}/wp-config.php
+    sed --in-place -r \
+        -e "s/\s*define\s*\(\s*'(DB_HOST|DB_NAME|DB_USER|DB_PASSWORD)'\s*,\s*'[^']+'\s*\)\s*;\s*/define('\1', \$_SERVER['\1_WP']);/g" \
+        -e "s/\s*define\s*\(\s*'(DB_CHARSET)'\s*,\s*'[^']+'\s*\)\s*;\s*/define('\1', 'utf8');/g" \
+        -e "s/\s*define\s*\(\s*'(WP_DEBUG)'\s*,[^)]+\)\s*;\s*/define('\1', true);/g" \
+        -e "s/\s*(\$table_prefix)\s*=\s*'[^']+'\s*;\s*/\1 = 'wp_';/g" \
+    ${WP_DIR}/wp-config.php
 
     SALT=$(curl 'https://api.wordpress.org/secret-key/1.1/salt/' | LC_ALL=C sed -e ':a;N;$!ba; s/\n/\n/g; s/[^a-zA-Z0-9,._+@%-]/\\&/g')
-    #echo ${SALT}
-    sed --in-place -E "s/define\('AUTH_KEY',[^;]+;//g" ${WP_DIR}/wp-config.php
-    sed --in-place -E "s/define\('SECURE_AUTH_KEY',[^;]+;//g" ${WP_DIR}/wp-config.php
-    sed --in-place -E "s/define\('LOGGED_IN_KEY',[^;]+;//g" ${WP_DIR}/wp-config.php
-    sed --in-place -E "s/define\('NONCE_KEY',[^;]+;//g" ${WP_DIR}/wp-config.php
-    sed --in-place -E "s/define\('AUTH_SALT',[^;]+;//g" ${WP_DIR}/wp-config.php
-    sed --in-place -E "s/define\('SECURE_AUTH_SALT',[^;]+;//g" ${WP_DIR}/wp-config.php
-    sed --in-place -E "s/define\('LOGGED_IN_SALT',[^;]+;//g" ${WP_DIR}/wp-config.php
-    sed --in-place -E "s/define\('NONCE_SALT',[^;]+;/SALT_PLACE/g" ${WP_DIR}/wp-config.php
-    sed --in-place -E "s/SALT_PLACE/${SALT}/g" ${WP_DIR}/wp-config.php
 
-    if [ `grep -o "add_filter('filesystem_method'" ${WP_DIR}/wp-config.php | wc -l` -eq "0" ]
-    then
-    sudo tee <<EOF -a ${WP_DIR}/wp-config.php > /dev/null
-        if(is_admin()) {
-            add_filter('filesystem_method', create_function('\$a', 'return "direct";' ));
-            define( 'FS_CHMOD_DIR', 0751 );
-        }
-EOF
-    fi
+    sed --in-place -r \
+        -e "/\s*define\s*\(\s*'(AUTH_KEY|SECURE_AUTH_KEY|LOGGED_IN_KEY|NONCE_KEY|AUTH_SALT|SECURE_AUTH_SALT|LOGGED_IN_SALT)'\s*,\s*'[^']+'\s*\)\s*;\s*/d" \
+        -e "s/\s*define\s*\(\s*'NONCE_SALT'\s*,\s*'[^']+'\s*\)\s*;\s*/${SALT}/g" \
+    ${WP_DIR}/wp-config.php
 
-    # curl https://api.wordpress.org/secret-key/1.1/salt/
+    rm -f ${WP_DIR}/{license.txt,readme.html,wp-config-sample.php}
 }
 
 function create_index_php() {
@@ -749,22 +743,24 @@ EOF
 #purge_web
 #install_base
 #install_web
-install_mariadb
+#install_mariadb
 
 configure_permissions
 
-configure_hosts
-setup_users_groups
+#configure_hosts
+#setup_users_groups
 setup_folders
-rm -f ${CERT_DIR}/*
-generate_cert
+#rm -f ${CERT_DIR}/*
+#generate_cert
 
 configure_fpm
 configure_fpm_adm
 configure_fpm_prd
 configure_nginx
 configure_mariadb
-create_index_php
+configure_wp
+#create_index_php
+
 
 
 
