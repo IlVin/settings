@@ -36,6 +36,8 @@ function install_base () {
         gnupg1 \
         gnupg2 \
         curl \
+        git \
+        rsync \
         dnsutils \
         net-tools \
         vim \
@@ -58,8 +60,10 @@ function install_base () {
 
 function purge_web() {
 
-    sudo service nginx stop
-    sudo service php7.2-fpm stop
+    for service in nginx php7.2-fpm mysql
+    do
+        sudo service ${service} stop
+    done
 
     sudo apt-get purge -yqq nginx*
     sudo apt-get purge -yqq php${PHPVER}*
@@ -199,6 +203,15 @@ function setup_users_groups() {
     setup_user_group ${SERVICE_USER} ${GROUP_FPM_ADM}
 }
 
+function rm_folders() {
+    cat /etc/mtab | cut -f 2 -d ' ' | grep -P "^${PRJ_ROOT}" | xargs -r sudo umount -l
+    cat /etc/mtab | cut -f 2 -d ' ' | grep -P "^${PRJ_ROOT}" | xargs -r sudo umount -f
+    for folder in ${CONF_DIR} ${CRON_DIR} ${RUN_DIR} ${BACKUP_DIR} ${CACHE_DIR} ${WP_DIR} ${LOG_DIR} ${HTDOCS_DIR} ${SITE_ROOT}
+    do
+        [[ -d ${folder} ]] && sudo rm -rf ${folder}
+    done
+}
+
 function setup_folders() {
 
     sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${PRJ_ROOT}
@@ -209,10 +222,11 @@ function setup_folders() {
 
     sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${LOG_DIR}
     sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${CERT_DIR}
-    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${DB_DIR}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${CRON_DIR}
     sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${SOFT_DIR}
 
     sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${CACHE_DIR}
+    sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${BACKUP_DIR}
     sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${RUN_DIR}
     sudo install -g ${PRJ_GROUP} -o ${PRJ_OWNER} -d -m a+rwx,o-w,g+s ${CONF_DIR}
 
@@ -232,7 +246,7 @@ function generate_cert() {
     # WEB-сервер: сертификат + приватный ключ
     # Этот сертификат + ключ нужно купить у провайдера
     # А пока генерируем самоподписанный
-    if [[ ! -f ${CERT_DIR}/${PRJ_NAME}_server.pem || ! -f ${CERT_DIR}/${PRJ_NAME}_server.key || ! -f ${CERT_DIR}/${PRJ_NAME}_admin.p12 ]]
+    if [[ ! -f ${CERT_DIR}/${PRJ_NAME}_server.pem || ! -f ${CERT_DIR}/${PRJ_NAME}_server.key || ! -f ${CERT_DIR}/${PRJ_NAME}_admin.p12 || ! -f ${CERT_DIR}/${PRJ_NAME}_admin.pem || ! -f ${CERT_DIR}/${PRJ_NAME}_admin.key ]]
     then
         cat << EOF | ssh ${SERVICE_USER}@${SERVICE_HOST} "/bin/bash -s" | tar -C ${CERT_DIR} -xvf -
             set -x
@@ -282,8 +296,6 @@ function generate_cert() {
                 -in \${CERT_DIR}/${PRJ_NAME}_admin.pem \
                 -inkey \${CERT_DIR}/${PRJ_NAME}_admin.key \
                 -name "Sub-domain certificate for ${PRJ_NAME}" \
-                -certfile \${HOME}/CA/iv77msk.ru_CA.crt \
-                -caname sub-iv77msk.ru_CA \
                 -passout pass: \
                 -out \${CERT_DIR}/${PRJ_NAME}_admin.p12
 
@@ -292,6 +304,8 @@ function generate_cert() {
                 ${PRJ_NAME}_server.pem \
                 ${PRJ_NAME}_server.key \
                 ${PRJ_NAME}_admin.p12 \
+                ${PRJ_NAME}_admin.pem \
+                ${PRJ_NAME}_admin.key \
 
 EOF
         sudo chown ${USER_NGINX}:${GROUP_NGINX} ${CERT_DIR}/${PRJ_NAME}_server.key
@@ -324,6 +338,8 @@ function configure_fpm() {
     #sudo sed -i "s|user_dir\s*=.*|user_dir =|g" /etc/php/${PHPVER}/fpm/php.ini
 
     [[ -f /etc/php/${PHPVER}/fpm/pool.d/www.conf ]] && sudo mv /etc/php/${PHPVER}/fpm/pool.d/www.conf /etc/php/${PHPVER}/fpm/example_pool.conf
+
+    git_commit 'Configure FPM'
 }
 
 function build_root_template() {
@@ -419,6 +435,7 @@ function configure_fpm_adm() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] \
         && cp -f /etc/php/${PHPVER}/fpm/example_pool.conf ${CONF_DIR}/${PRJ_NAME}_adm.conf \
         && sudo ln -sf ${CONF_DIR}/${PRJ_NAME}_adm.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_adm.conf
+    git_commit 'Added config FPM ADM'
 
     sudo sed -i -r \
         -e "s|^\s*\[www\]|[${PRJ_NAME}_adm]|g" \
@@ -448,12 +465,14 @@ function configure_fpm_adm() {
         -e "s|^;*\s*(ping\.path)\s*=.*|\1 = ${PING_PATH_FPM_ADM}|g" \
         -e "s|^;*\s*(ping\.response)\s*=.*|\1 = ${PING_RESPONSE_FPM_ADM}|g" \
     ${CONF_DIR}/${PRJ_NAME}_adm.conf
+    git_commit 'Configure FPM ADM'
 }
 
 function configure_fpm_prd() {
     [[ -f /etc/php/${PHPVER}/fpm/example_pool.conf ]] \
         && cp -f /etc/php/${PHPVER}/fpm/example_pool.conf ${CONF_DIR}/${PRJ_NAME}_prd.conf \
         && sudo ln -sf ${CONF_DIR}/${PRJ_NAME}_prd.conf /etc/php/${PHPVER}/fpm/pool.d/${PRJ_NAME}_prd.conf
+    git_commit 'Added config FPM PRD'
 
     # make_root_fpm
         # root
@@ -498,6 +517,7 @@ function configure_fpm_prd() {
         -e "s|^;*\s*(ping\.path)\s*=.*|\1 = ${PING_PATH_FPM_PRD}|g" \
         -e "s|^;*\s*(ping\.response)\s*=.*|\1 = ${PING_RESPONSE_FPM_PRD}|g" \
     ${CONF_DIR}/${PRJ_NAME}_prd.conf
+    git_commit 'Configure FPM PRD'
 }
 
 function configure_nginx() {
@@ -647,6 +667,8 @@ EOF
     chmod 0664 ${CONF_NGINX}
     sudo ln -sf ${CONF_NGINX}  /etc/nginx/conf.d/${PRJ_NAME}_nginx.conf
     sudo rm -f /etc/nginx/conf.d/default.conf
+
+    git_commit 'Configure NGINX'
 }
 
 
@@ -681,6 +703,33 @@ EOF
     /etc/mysql/mariadb.cnf
 
     sudo service mysql restart
+
+    git_commit 'Configure MariaDB'
+}
+
+function setup_wp() {
+    for service in nginx php7.2-fpm mysql
+    do
+        sudo service ${service} stop
+        sudo service ${service} start
+    done
+
+    curl "https://${PRJ_DOMAIN}/blog/wp-admin/install.php?step=2" -v \
+        -X POST \
+        --cacert ${CERT_CA_CRT} \
+        --cert ${CERT_DIR}/${PRJ_NAME}_admin.pem \
+        --key ${CERT_DIR}/${PRJ_NAME}_admin.key \
+        --form "weblog_title=${WP_TITLE}" \
+        --form "user_name=${WP_USERNAME}" \
+        --form "admin_password=${WP_PASSWD}" \
+        --form "pass1-text=${WP_PASSWD}" \
+        --form "admin_password2=${WP_PASSWD}" \
+        --form "admin_email=${WP_EMAIL}" \
+        --form "Submit=Установить WordPress" \
+        --form "language=${WP_LANGUAGE}" \
+    > /dev/null
+
+    git_commit 'Setup WP'
 }
 
 function configure_wp() {
@@ -711,6 +760,8 @@ function configure_wp() {
     ${WP_DIR}/wp-config.php
 
     rm -f ${WP_DIR}/{license.txt,readme.html,wp-config-sample.php}
+
+    git_commit 'Configure WP'
 }
 
 function create_index_php() {
@@ -737,8 +788,33 @@ function create_index_php() {
     echo '</pre>';
 ?>
 EOF
+
+    git_commit 'Create /index.php'
 }
 
+function setup_time_machine() {
+    echo "SETUP TIME MACHINE"
+    [[ -d ${PRJ_ROOT}/.git ]] && rm -rf ${PRJ_ROOT}/.git
+    git config --global pack.windowMemory "50m"
+    git config --global pack.packSizeLimit "50m"
+    git config --global pack.threads "1"
+    git config --global user.name "${PRJ_NAME}"
+    git config --global user.email "${PRJ_EMAIL}"
+    git config --global core.symlinks true
+    git config --global core.fileMode false
+    git config --global core.longpaths true
+    # git config --global core.autocrlf true
+    # git config --global http.postBuffer 524288000 (не обязательно, зависит от случая, чаще всего требуется, когда remote по протоколу https)
+    git init ${PRJ_ROOT}
+    cat << EOF | tee ${PRJ_ROOT}/.gitignore > /dev/null
+$(echo "${CERT_DIR}" | sed -r "s|${PRJ_ROOT}(.*)|\1|g")
+$(echo "${ROOT_FPM_PRD}" | sed -r "s|${PRJ_ROOT}(.*)|\1|g")
+$(echo "${SOFT_DIR}" | sed -r "s|${PRJ_ROOT}(.*)|\1|g")
+$(echo "${LOG_DIR}" | sed -r "s|${PRJ_ROOT}(.*)|\1|g")
+EOF
+    git_commit 'Initial commit'
+    git remote add origin https://IlVinWp@bitbucket.org/IlVinWp/wp.git
+}
 
 #purge_web
 #install_base
@@ -747,11 +823,15 @@ EOF
 
 configure_permissions
 
-#configure_hosts
-#setup_users_groups
+configure_hosts
+setup_users_groups
+rm_folders
 setup_folders
+
+setup_time_machine
+
 #rm -f ${CERT_DIR}/*
-#generate_cert
+generate_cert
 
 configure_fpm
 configure_fpm_adm
@@ -759,6 +839,7 @@ configure_fpm_prd
 configure_nginx
 configure_mariadb
 configure_wp
+setup_wp
 #create_index_php
 
 

@@ -16,6 +16,14 @@ export SERVICE_USER='iv77msk_ru'
 export SERVICE_HOST='ca.iv77msk.ru'
 #export SERVICE_HOME=$(grep ${SERVICE_USER} /etc/passwd | cut -d ':' -f 6)
 
+# WP
+export WP_URL_PATH='/blog'
+export WP_TITLE='iv77msk'
+export WP_USERNAME='IlVin'
+export WP_PASSWD='qwest2qwest'
+export WP_EMAIL='ilvin@mail.ru'
+export WP_LANGUAGE=''
+
 # Проект
 export PRJ_NAME='wp'
 export PRJ_DOMAINS=("${PRJ_NAME}.iv77msk.ru" "www.${PRJ_NAME}.iv77msk.ru")
@@ -32,13 +40,14 @@ export SITE_ROOT="${PRJ_ROOT}/site"
 export HTDOCS_DIR="${SITE_ROOT}/htdocs"
 export LOG_DIR="${SITE_ROOT}/logs"
 
-export WP_DIR="${HTDOCS_DIR}/blog"      # Папка, в которую WP сетапить (совпадает с ${HTDOCS_DIR})
-export DB_DIR="${PRJ_ROOT}/mysql"
-export SOFT_DIR="${PRJ_ROOT}/soft"      # Папка, в которую скачивается софт, например WP
+export WP_DIR="${HTDOCS_DIR}${WP_URL_PATH}" # Папка, в которую WP сетапить (совпадает с ${HTDOCS_DIR})
+export SOFT_DIR="${PRJ_ROOT}/soft"          # Папка, в которую скачивается софт, например WP
 
-export CACHE_DIR="${PRJ_ROOT}/cache"    # Кэш nginx
-export RUN_DIR="${PRJ_ROOT}/run"        # Папка для UNIX сокетов
-export CONF_DIR="${PRJ_ROOT}/conf"      # Папка для конфигов сайта
+export CACHE_DIR="${PRJ_ROOT}/cache"        # Кэш nginx
+export BACKUP_DIR="${PRJ_ROOT}/backup"      # Папка бекапа
+export RUN_DIR="${PRJ_ROOT}/run"            # Папка для UNIX сокетов
+export CRON_DIR="${PRJ_ROOT}/cron"          # Папка для конфигов CRON задач
+export CONF_DIR="${SITE_ROOT}/conf"         # Папка для конфигов сайта
 
 export CONF_NGINX="${CONF_DIR}/${PRJ_NAME}_nginx.conf"
 export CONF_NGINX_FCGI_ADM="${CONF_DIR}/${PRJ_NAME}_nginx_fcgi_adm.conf"
@@ -164,6 +173,37 @@ function user_knownhost() {
     ssh-keyscan ${host} 2>/dev/null | sudo tee -a ${user_home}/.ssh/known_hosts > /dev/null
     sudo chown ${user}:${user} ${user_home}/.ssh/known_hosts
     sudo chmod a-rwx,u+rw ${user_home}/.ssh/known_hosts
+}
+
+function git_commit() {
+    local message=$1
+    [[ ${message} == '' ]] && message="AutoCommit"
+    detached_commit=$(cd ${PRJ_ROOT} && git status | grep 'HEAD detached at' | grep -Po '[^ ]+$')
+    if [[ ${detached_commit} != '' ]]
+    then
+        branch_name="$(date +%F)_${detached_commit}"
+        branch_exists=$(git branch | grep "${branch_name}")
+        if [[ ${branch_exists} != '' ]]
+        then
+            cd ${PRJ_ROOT} && git checkout "${branch_name}"
+        else
+            cd ${PRJ_ROOT} && git checkout -b "${branch_name}" "${detached_commit}"
+        fi
+    fi
+
+    # Делаем отправку данных в удаленный репозиторий
+    # git push origin master
+    # Создаем shell-скрипт
+    # В корне сервера (возможно, в директории на уровень выше директории текущего проекта) создаем файл backup.sh.
+    # Данный shell-скрипт будет выполняться по cron ежедневно в одно и то же время, установленное в планировщике.
+    # Ниже привожу листинг содержимого вновь созданного файла:
+    # cd [ абсолютный путь до директории проекта ]
+    # git push --repo https://username:password@bitbucket.org/username/reponame.git
+
+    cd ${PRJ_ROOT} && git add --all .
+    cd ${PRJ_ROOT} && git commit -a -m "$message"
+    #git push -u origin master
+    git push --repo https://IlVinWp:****@bitbucket.org/IlVinWp/wp.git
 }
 
 set -x
