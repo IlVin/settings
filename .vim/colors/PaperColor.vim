@@ -1102,6 +1102,13 @@ fun! s:set_color_variables()
   let g:terminal_color_14 = color14[0]
   let g:terminal_color_15 = color15[0]
 
+  " Vim 8's :terminal buffer ANSI colors
+  if has('terminal')
+    let g:terminal_ansi_colors = [color00[0], color01[0], color02[0], color03[0],
+        \ color04[0], color05[0], color06[0], color07[0], color08[0], color09[0],
+        \ color10[0], color11[0], color12[0], color13[0], color14[0], color15[0]]
+  endif
+
 endfun
 " }}}
 
@@ -1130,6 +1137,7 @@ fun! s:apply_syntax_highlightings()
     " Switching between dark & light variant through `set background`
     if s:is_dark " DARK VARIANT
       set background=dark
+      exec 'hi EndOfBuffer' . s:fg_cursor_fg  . s:ft_none
     else " LIGHT VARIANT
       set background=light
     endif
@@ -1522,7 +1530,7 @@ fun! s:apply_syntax_highlightings()
   exec 'hi mkdLink' . s:fg_blue . s:ft_bold
   exec 'hi mkdURL' . s:fg_comment
   exec 'hi mkdString' . s:fg_foreground
-  exec 'hi mkdBlockQuote' . s:fg_foreground . s:bg_popupmenu_bg
+  exec 'hi mkdBlockQuote' . s:fg_pink
   exec 'hi mkdLinkTitle' . s:fg_pink
   exec 'hi mkdDelimiter' . s:fg_aqua
   exec 'hi mkdRule' . s:fg_pink
@@ -1557,7 +1565,6 @@ fun! s:apply_syntax_highlightings()
   exec 'hi pythonStrFormatting' . s:fg_olive . s:ft_bold
 
   exec 'hi pythonBoolean' . s:fg_green . s:ft_bold
-  exec 'hi pythonExClass' . s:fg_red
   exec 'hi pythonBytesEscape' . s:fg_olive . s:ft_bold
   exec 'hi pythonDottedName' . s:fg_purple
   exec 'hi pythonStrFormat' . s:fg_foreground
@@ -1603,6 +1610,11 @@ fun! s:apply_syntax_highlightings()
   exec 'hi javaScriptMember' . s:fg_foreground
 
   " @target https://github.com/pangloss/vim-javascript
+  exec 'hi jsImport' . s:fg_pink . s:ft_bold
+  exec 'hi jsExport' . s:fg_pink . s:ft_bold
+  exec 'hi jsModuleAs' . s:fg_pink . s:ft_bold
+  exec 'hi jsFrom' . s:fg_pink . s:ft_bold
+  exec 'hi jsExportDefault' . s:fg_pink . s:ft_bold
   exec 'hi jsFuncParens' . s:fg_blue
   exec 'hi jsFuncBraces' . s:fg_blue
   exec 'hi jsParens' . s:fg_blue
