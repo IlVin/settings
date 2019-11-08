@@ -48,3 +48,6 @@ export PATH=~/esp/xtensa-lx106-elf/bin:$PATH
 
 # xubuntu самостоятельно менеджерит ssh-agent
 #eval $(ssh-agent)
+
+alias servant_client="${HOME}/arcadia/web/app_host/tools/servant_client/servant_client"
+alias event_log_dump="${HOME}/arcadia/web/app_host/tools/event_log_dump/event_log_dump"
