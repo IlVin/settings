@@ -1,20 +1,24 @@
 #!/bin/bash
 
-cd ~
-HOMEDIR=`pwd`
+set -x
 
 # System
-sudo apt-get install -y vim-gtk3
-sudo apt-get install -y font-manager
+sudo apt-get install -y \
+    gv \
+    vim-gtk3 \
+    font-manager \
 
 # Gnome utility
 sudo apt-get install -y gnome-disk-utility
 
-sudo apt install -y firefox
-sudo apt install -y okular
-sudo apt install -y gimp
-sudo apt install -y libavformat-ffmpeg56 libavfilter-ffmpeg5 gstreamer1.0-libav
-sudo apt install -y vlc
+sudo apt install -y \
+    firefox \
+    okular \
+    gimp \
+    libavformat-ffmpeg56 \
+    libavfilter-ffmpeg5 \
+    gstreamer1.0-libav \
+    vlc \
 
 # Remmina
 sudo apt-add-repository ppa:remmina-ppa-team/remmina-next
