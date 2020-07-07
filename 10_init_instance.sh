@@ -23,7 +23,6 @@ sudo apt install -y \
     vim \
     rsync \
     jq \
-    dconf-tools \
     pv \
     parallel \
     liblz4-tool \
