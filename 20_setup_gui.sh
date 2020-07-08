@@ -26,7 +26,9 @@ sudo apt-get update
 sudo apt-get install remmina remmina-plugin-rdp
 
 # Network Manager
-sudo apt install -y network-manager-openvpn
-sudo apt install -y network-manager-openvpn-gnome
+sudo apt install -y \
+    openvpn \
+    network-manager-openvpn \
+    network-manager-openvpn-gnome
 sudo service network-manager restart
 
