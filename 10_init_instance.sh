@@ -41,15 +41,6 @@ sudo apt install -y openssh-server
 [ -d ~/.ssh ] || mkdir ~/.ssh
 [ -d ~/.ssh ] && chmod 700 ~/.ssh
 
-# GIT & SVN
-git config --global user.email "ilvin@mail.ru"
-git config --global user.name "Ilia Vinokurov"
-git config --global push.default simple
-git config --global receive.denyCurrentBranch ignore
-
-#[ -d ~/ilvin.git/ ] && rm -rf ~/ilvin.git/
-#git clone https://github.com/IlVin/settings.git ~/ilvin.git/
-
 # Setup console
 #    sudo update-locale LANG=ru_RU.UTF-8 LANGUAGE=ru_RU:ru:en_US:en
 sudo locale-gen en_US.UTF-8 ru_RU.UTF-8

@@ -16,7 +16,7 @@ set -x
 
     git config --global user.email "ilvin@mail.ru"
     git config --global user.name "Ilia Vinokurov"
-    git config --global push.default simple
+    git config --global push.default current
     git config --global receive.denyCurrentBranch ignore
 
     ln -sf $HOME/ilvin.git/.tmux.conf $HOME/.tmux.conf
